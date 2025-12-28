@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Investment Feasibility App</title>
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    body { font-family: Inter, system-ui, sans-serif; }
+    .card { @apply bg-white rounded-2xl shadow-sm border border-slate-200; }
+    .input { @apply border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500; }
+    .label { @apply text-xs font-semibold text-slate-600 uppercase tracking-wide; }
+  </style>
+</head>
+<body class="bg-slate-100 min-h-screen">
+
+<div class="max-w-7xl mx-auto p-6" id="app"></div>
+
+<script>
+let activeProjectId = 'PRJ001';
+
+function addProject() {
+  const id = 'PRJ' + String(projects.length + 1).padStart(3,'0');
+  projects.push({
+    projectId: id,
+    projectName: 'New Project',
+    initialInvestment: 0,
+    year1Revenue: 0,
+    cogsPercent: 0.3,
+    fixedCosts: 0,
+    overheadPercent: 0.05,
+    annualDepreciation: 0,
+    discountRate: 0.1,
+    assetLife: 5,
+    terminalMultiple: 5
+  });
+  activeProjectId = id;
+  render();
+}
+
+const controls = { taxRate: 0.25, growth: 0.04 };
+
+let projects = [
+  {
+    projectId: 'PRJ001', projectName: 'Factory Expansion', initialInvestment: 500000,
+    year1Revenue: 700000, cogsPercent: 0.35, fixedCosts: 300000,
+    overheadPercent: 0.05, annualDepreciation: 100000,
+    discountRate: 0.10, assetLife: 5, terminalMultiple: 6
+  }
+];
+
+const num = v => isNaN(v) || v === '' ? 0 : Number(v);
+const formatCurrency = v => new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',maximumFractionDigits:0}).format(v);
+
+const cashflows = p => {
+  let rows=[{year:0,fcf:-num(p.initialInvestment),cum:-num(p.initialInvestment)}];
+  for(let y=1;y<=p.assetLife;y++){
+    const rev=p.year1Revenue*Math.pow(1+controls.growth,y-1);
+    const ebitda=rev-(rev*p.cogsPercent)-p.fixedCosts-(rev*p.overheadPercent);
+    const ebit=ebitda-p.annualDepreciation;
+    const tax=Math.max(0,ebit*controls.taxRate);
+    const net=ebit-tax;
+    const terminal=y===p.assetLife?net*p.terminalMultiple:0;
+    const fcf=net+p.annualDepreciation+terminal;
+    rows.push({year:y,fcf,cum:rows[y-1].cum+fcf});
+  }
+  return rows;
+};
+
+const npv = (p,cf) => cf.reduce((a,c,i)=>a+c.fcf/Math.pow(1+p.discountRate,i),0);
+
+const irr = cf => {
+  if(!cf.some(x=>x.fcf<0)||!cf.some(x=>x.fcf>0)) return null;
+  let r=0.1;
+  for(let i=0;i<100;i++){
+    let f=0,d=0;
+    cf.forEach((c,t)=>{f+=c.fcf/Math.pow(1+r,t);d-=t*c.fcf/Math.pow(1+r,t+1)});
+    r-=f/d;
+  }
+  return r;
+};
+
+function update(p,k,v){ p[k]=num(v); render(); }
+
+function render(){
+  const app=document.getElementById('app');
+  const p=projects.find(x=>x.projectId===activeProjectId);
+  const cf=cashflows(p);
+  const NPV=npv(p,cf);
+  const IRR=irr(cf);
+  const pay=cf.find(x=>x.cum>=0)?.year||'—';
+
+  app.innerHTML=`
+  <div class="flex items-center justify-between mb-6">
+    <div class="flex items-center gap-4">
+      <h1 class="text-2xl font-bold">Investment Feasibility</h1>
+      <select class="input" onchange="activeProjectId=this.value;render()">
+        ${projects.map(p=>`<option value="${p.projectId}" ${p.projectId===activeProjectId?'selected':''}>${p.projectName}</option>`).join('')}
+      </select>
+      <button onclick="addProject()" class="px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm">+ Add Project</button>
+    </div>
+    <span class="text-sm text-slate-500">© Parth Rahul Bhosale</span>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+    <div class="lg:col-span-2 card p-6">
+      <h2 class="font-semibold mb-1">Project Assumptions</h2>
+      <p class="text-xs text-slate-500 mb-4">Edit assumptions for the selected project</p>
+      <h2 class="font-semibold mb-4">Project Assumptions</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        ${['initialInvestment','year1Revenue','fixedCosts','annualDepreciation'].map(k=>`
+          <div><label class="label">${k.replace(/([A-Z])/g,' $1')}</label>
+          <input class="input w-full" type="number" value="${p[k]}" oninput="update(projects[0],'${k}',this.value)"></div>`).join('')}
+        ${['cogsPercent','overheadPercent','discountRate','terminalMultiple','assetLife'].map(k=>`
+          <div><label class="label">${k.replace(/([A-Z])/g,' $1')}</label>
+          <input class="input w-full" type="number" step="0.01" value="${p[k]}" oninput="update(projects[0],'${k}',this.value)"></div>`).join('')}
+      </div>
+    </div>
+
+    <div class="space-y-4">
+      <div class="card p-4">
+        <div class="text-xs text-slate-500">Net Present Value</div>
+        <div class="text-2xl font-bold">${formatCurrency(NPV)}</div>
+      </div>
+      <div class="card p-4">
+        <div class="text-xs text-slate-500">IRR</div>
+        <div class="text-2xl font-bold">${IRR===null?'—':(IRR*100).toFixed(2)+'%'}</div>
+      </div>
+      <div class="card p-4">
+        <div class="text-xs text-slate-500">Payback Period</div>
+        <div class="text-2xl font-bold">${pay} yrs</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card p-6 mt-6">
+    <h2 class="font-semibold mb-3">Cashflow Timeline</h2>
+    <table class="w-full text-sm">
+      <thead class="text-slate-500"><tr><th>Year</th><th class="text-right">FCF</th><th class="text-right">Cumulative</th></tr></thead>
+      <tbody>${cf.map(r=>`<tr class="border-t"><td>${r.year}</td><td class="text-right">${formatCurrency(r.fcf)}</td><td class="text-right">${formatCurrency(r.cum)}</td></tr>`).join('')}</tbody>
+    </table>
+  </div>`;
+}
+
+render();
+</script>
+</body>
+</html>
