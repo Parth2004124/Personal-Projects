@@ -3,153 +3,838 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Investment Feasibility App</title>
-
-  <!-- Tailwind -->
+  <title>PB CapPlan - Pro Budgeting</title>
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- Lucide Icons -->
-  <script src="https://unpkg.com/lucide@latest"></script>
-
+  <!-- Phosphor Icons -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    body { font-family: Inter, system-ui, sans-serif; }
-    .card { @apply bg-white rounded-2xl shadow-sm border border-slate-200; }
-    .input { @apply border border-slate-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500; }
-    .label { @apply text-xs font-semibold text-slate-600 uppercase tracking-wide; }
+    /* Theme: Yellow Desert (Amber & Stone) */
+    :root {
+      --primary: #d97706; /* Amber 600 */
+      --primary-hover: #b45309; /* Amber 700 */
+      --accent: #f59e0b; /* Amber 500 */
+      --accent-light: #fcd34d; /* Amber 300 */
+      --bg-dark: #0c0a09; /* Stone 950 */
+      --panel-dark: #1c1917; /* Stone 900 */
+      --border-color: #292524; /* Stone 800 */
+      --text-main: #e7e5e4; /* Stone 200 */
+      --text-muted: #a8a29e; /* Stone 400 */
+    }
+
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: var(--bg-dark); }
+    ::-webkit-scrollbar-thumb { background: #44403c; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #57534e; }
+    
+    body { background-color: var(--bg-dark); color: var(--text-main); }
+
+    /* Navigation Active State */
+    .nav-item.active {
+      background-color: #1c1917;
+      border-left: 3px solid var(--accent);
+      color: var(--accent);
+      background: linear-gradient(90deg, rgba(245, 158, 11, 0.1) 0%, rgba(28, 25, 23, 0) 100%);
+    }
+    .nav-item { border-left: 3px solid transparent; }
+
+    /* Modern Inputs */
+    .input-field {
+        background: #141210;
+        border: 1px solid #292524;
+        color: white;
+        transition: all 0.2s;
+    }
+    .input-field:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.2);
+    }
+
+    /* Scenario Badges */
+    .scenario-btn.active {
+        background-color: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+
+    /* Print Styles */
+    @media print {
+        aside, header, .no-print { display: none !important; }
+        body, main, #app { height: auto; overflow: visible; background: white; color: black; }
+        .bg-\[\#1c1917\], .bg-\[\#141210\], .bg-stone-900 { background: white !important; border: 1px solid #ddd !important; color: black !important; }
+        .text-stone-400, .text-amber-500 { color: #444 !important; }
+        .text-white, .text-stone-200 { color: black !important; }
+        canvas { max-height: 300px; }
+    }
   </style>
 </head>
-<body class="bg-slate-100 min-h-screen">
+<body class="font-sans h-screen flex overflow-hidden selection:bg-amber-500 selection:text-black">
 
-<div class="max-w-7xl mx-auto p-6" id="app"></div>
+  <!-- SIDEBAR -->
+  <aside id="sidebar" class="w-64 bg-[#141210] border-r border-[#292524] flex flex-col hidden md:flex shrink-0 transition-all duration-300">
+    <div class="p-6 border-b border-[#292524] flex items-center gap-3">
+      <div class="w-8 h-8 rounded bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-orange-900/40">
+        <i class="ph-bold ph-plant text-white text-lg"></i>
+      </div>
+      <h1 class="font-bold text-lg tracking-wide text-stone-200">PB <span class="text-amber-500">CapPlan</span></h1>
+    </div>
+    
+    <nav class="flex-1 p-4 space-y-1 overflow-y-auto">
+      <div class="px-4 pb-2 text-[10px] uppercase font-bold text-stone-600 tracking-wider">Setup</div>
+      <button onclick="router('inputs')" id="nav-inputs" class="nav-item w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-stone-400 hover:bg-[#1c1917] hover:text-white transition-all rounded-r-lg group">
+        <i class="ph ph-sliders-horizontal text-lg group-hover:text-amber-400 transition-colors"></i> Project Inputs
+      </button>
+
+      <div class="px-4 pb-2 pt-6 text-[10px] uppercase font-bold text-stone-600 tracking-wider">Analysis</div>
+      <button onclick="router('planner')" id="nav-planner" class="nav-item w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-stone-400 hover:bg-[#1c1917] hover:text-white transition-all rounded-r-lg group active">
+        <i class="ph ph-strategy text-lg group-hover:text-amber-400 transition-colors"></i> Budget Planner
+      </button>
+      
+      <div class="px-4 pb-2 pt-6 text-[10px] uppercase font-bold text-stone-600 tracking-wider">Resources</div>
+      <button onclick="router('docs')" id="nav-docs" class="nav-item w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-stone-400 hover:bg-[#1c1917] hover:text-white transition-all rounded-r-lg group">
+        <i class="ph ph-book-open text-lg group-hover:text-amber-400 transition-colors"></i> Knowledge Base
+      </button>
+      <button onclick="window.print()" class="nav-item w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-stone-400 hover:bg-[#1c1917] hover:text-white transition-all rounded-r-lg group">
+        <i class="ph ph-file-pdf text-lg group-hover:text-amber-400 transition-colors"></i> Export Report
+      </button>
+    </nav>
+
+    <div class="p-4 border-t border-[#292524] bg-[#0f0e0d]">
+      <div class="text-xs text-stone-500 mb-2 uppercase font-bold">WACC Status</div>
+      <div id="sidebar-wacc" class="flex items-center gap-2 text-sm text-amber-500 font-mono">
+          <i class="ph-fill ph-percent"></i> 10.0%
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="flex-1 flex flex-col h-screen overflow-hidden relative">
+    <!-- Header -->
+    <header class="h-16 bg-[#141210] border-b border-[#292524] flex items-center justify-between px-6 shrink-0">
+      <div class="md:hidden flex items-center gap-2">
+         <button onclick="document.querySelector('aside').classList.toggle('hidden')" class="text-stone-300 p-2"><i class="ph ph-list text-2xl"></i></button>
+         <div class="font-bold text-stone-200">PB CapPlan</div>
+      </div>
+      
+      <!-- Scenario Switcher (Visible only on Planner) -->
+      <div id="header-scenarios" class="hidden md:flex bg-[#1c1917] p-1 rounded-lg border border-[#292524]">
+          <!-- Buttons injected by JS based on state -->
+      </div>
+
+      <div class="ml-auto flex items-center gap-4">
+          <span id="header-project-name" class="hidden sm:block text-xs font-bold text-stone-500 uppercase tracking-widest border-r border-[#292524] pr-4 mr-2">New Project</span>
+          <button onclick="resetApp()" class="text-xs text-stone-500 hover:text-red-400 flex items-center gap-1 transition-colors">
+              <i class="ph-bold ph-arrow-counter-clockwise"></i> Reset
+          </button>
+      </div>
+    </header>
+
+    <!-- App Container -->
+    <div id="app" class="flex-1 overflow-y-auto p-4 md:p-8 scroll-smooth">
+      <!-- Views injected via JS -->
+    </div>
+  </main>
+
+  <!-- WACC Modal -->
+  <div id="wacc-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden z-50 flex items-center justify-center">
+      <div class="bg-[#1c1917] border border-[#292524] w-full max-w-md p-6 rounded-xl shadow-2xl">
+          <div class="flex justify-between items-center mb-6">
+              <h3 class="text-lg font-bold text-white">WACC Calculator</h3>
+              <button onclick="toggleWaccModal()" class="text-stone-400 hover:text-white"><i class="ph-bold ph-x"></i></button>
+          </div>
+          <div class="space-y-4">
+              <div class="grid grid-cols-2 gap-4">
+                  <div>
+                      <label class="text-xs text-stone-500 uppercase">Cost of Equity (%)</label>
+                      <input type="number" id="calc-ke" value="12" class="input-field w-full p-2 rounded mt-1">
+                  </div>
+                  <div>
+                      <label class="text-xs text-stone-500 uppercase">Weight of Equity (%)</label>
+                      <input type="number" id="calc-we" value="70" class="input-field w-full p-2 rounded mt-1">
+                  </div>
+              </div>
+              <div class="grid grid-cols-3 gap-4">
+                  <div>
+                      <label class="text-xs text-stone-500 uppercase">Cost of Debt (%)</label>
+                      <input type="number" id="calc-kd" value="6" class="input-field w-full p-2 rounded mt-1">
+                  </div>
+                  <div>
+                      <label class="text-xs text-stone-500 uppercase">Weight Debt (%)</label>
+                      <input type="number" id="calc-wd" value="30" class="input-field w-full p-2 rounded mt-1">
+                  </div>
+                  <div>
+                      <label class="text-xs text-stone-500 uppercase">Tax Rate (%)</label>
+                      <input type="number" id="calc-t" value="25" class="input-field w-full p-2 rounded mt-1">
+                  </div>
+              </div>
+              <div class="bg-[#141210] p-4 rounded-lg mt-4 flex justify-between items-center">
+                  <span class="text-stone-400 text-sm">Calculated WACC:</span>
+                  <span id="calc-result" class="text-xl font-bold text-amber-500">--</span>
+              </div>
+              <button onclick="applyWacc()" class="w-full py-2 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-lg transition-colors">Apply to Model</button>
+          </div>
+      </div>
+  </div>
 
 <script>
-let activeProjectId = 'PRJ001';
-
-function addProject() {
-  const id = 'PRJ' + String(projects.length + 1).padStart(3,'0');
-  projects.push({
-    projectId: id,
-    projectName: 'New Project',
-    initialInvestment: 0,
-    year1Revenue: 0,
-    cogsPercent: 0.3,
-    fixedCosts: 0,
-    overheadPercent: 0.05,
-    annualDepreciation: 0,
-    discountRate: 0.1,
-    assetLife: 5,
-    terminalMultiple: 5
-  });
-  activeProjectId = id;
-  render();
-}
-
-const controls = { taxRate: 0.25, growth: 0.04 };
-
-let projects = [
-  {
-    projectId: 'PRJ001', projectName: 'Factory Expansion', initialInvestment: 500000,
-    year1Revenue: 700000, cogsPercent: 0.35, fixedCosts: 300000,
-    overheadPercent: 0.05, annualDepreciation: 100000,
-    discountRate: 0.10, assetLife: 5, terminalMultiple: 6
-  }
-];
-
-const num = v => isNaN(v) || v === '' ? 0 : Number(v);
-const formatCurrency = v => new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',maximumFractionDigits:0}).format(v);
-
-const cashflows = p => {
-  let rows=[{year:0,fcf:-num(p.initialInvestment),cum:-num(p.initialInvestment)}];
-  for(let y=1;y<=p.assetLife;y++){
-    const rev=p.year1Revenue*Math.pow(1+controls.growth,y-1);
-    const ebitda=rev-(rev*p.cogsPercent)-p.fixedCosts-(rev*p.overheadPercent);
-    const ebit=ebitda-p.annualDepreciation;
-    const tax=Math.max(0,ebit*controls.taxRate);
-    const net=ebit-tax;
-    const terminal=y===p.assetLife?net*p.terminalMultiple:0;
-    const fcf=net+p.annualDepreciation+terminal;
-    rows.push({year:y,fcf,cum:rows[y-1].cum+fcf});
-  }
-  return rows;
+/**
+ * ==========================================
+ * STATE & DATA
+ * ==========================================
+ */
+const DEFAULT_FLOWS = {
+    'Base': [25000, 30000, 35000, 40000, 45000],
+    'Optimistic': [30000, 40000, 50000, 60000, 70000],
+    'Pessimistic': [15000, 20000, 20000, 25000, 25000]
 };
 
-const npv = (p,cf) => cf.reduce((a,c,i)=>a+c.fcf/Math.pow(1+p.discountRate,i),0);
-
-const irr = cf => {
-  if(!cf.some(x=>x.fcf<0)||!cf.some(x=>x.fcf>0)) return null;
-  let r=0.1;
-  for(let i=0;i<100;i++){
-    let f=0,d=0;
-    cf.forEach((c,t)=>{f+=c.fcf/Math.pow(1+r,t);d-=t*c.fcf/Math.pow(1+r,t+1)});
-    r-=f/d;
-  }
-  return r;
+let appState = {
+    projectName: "New CapEx Project",
+    manager: "Finance Team",
+    currency: "$",
+    salvageValue: 0,
+    taxRate: 25,
+    inflationRate: 2,
+    
+    currentScenarioIndex: 0,
+    scenarioNames: ['Base', 'Optimistic', 'Pessimistic'],
+    
+    investment: 100000,
+    wacc: 10,
+    years: 5,
+    
+    // Stores flows as array of arrays: [ [base_flows], [opt_flows], [pess_flows] ]
+    scenarioFlows: [
+        [25000, 30000, 35000, 40000, 45000],
+        [30000, 40000, 50000, 60000, 70000],
+        [15000, 20000, 20000, 25000, 25000]
+    ]
 };
 
-function update(p,k,v){ p[k]=num(v); render(); }
+let chartInstance = null;
 
-function render(){
-  const app=document.getElementById('app');
-  const p=projects.find(x=>x.projectId===activeProjectId);
-  const cf=cashflows(p);
-  const NPV=npv(p,cf);
-  const IRR=irr(cf);
-  const pay=cf.find(x=>x.cum>=0)?.year||'—';
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+    router('inputs');
+});
 
-  app.innerHTML=`
-  <div class="flex items-center justify-between mb-6">
-    <div class="flex items-center gap-4">
-      <h1 class="text-2xl font-bold">Investment Feasibility</h1>
-      <select class="input" onchange="activeProjectId=this.value;render()">
-        ${projects.map(p=>`<option value="${p.projectId}" ${p.projectId===activeProjectId?'selected':''}>${p.projectName}</option>`).join('')}
-      </select>
-      <button onclick="addProject()" class="px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm">+ Add Project</button>
-    </div>
-    <span class="text-sm text-slate-500">© Parth Rahul Bhosale</span>
-  </div>
+/**
+ * ==========================================
+ * ROUTER
+ * ==========================================
+ */
+function router(view) {
+    const app = document.getElementById('app');
+    
+    // Update Sidebar
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+    document.getElementById(`nav-${view}`).classList.add('active');
 
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    // Update Header Elements
+    const scenSwitcher = document.getElementById('header-scenarios');
+    document.getElementById('header-project-name').innerText = appState.projectName;
 
-    <div class="lg:col-span-2 card p-6">
-      <h2 class="font-semibold mb-1">Project Assumptions</h2>
-      <p class="text-xs text-slate-500 mb-4">Edit assumptions for the selected project</p>
-      <h2 class="font-semibold mb-4">Project Assumptions</h2>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        ${['initialInvestment','year1Revenue','fixedCosts','annualDepreciation'].map(k=>`
-          <div><label class="label">${k.replace(/([A-Z])/g,' $1')}</label>
-          <input class="input w-full" type="number" value="${p[k]}" oninput="update(projects[0],'${k}',this.value)"></div>`).join('')}
-        ${['cogsPercent','overheadPercent','discountRate','terminalMultiple','assetLife'].map(k=>`
-          <div><label class="label">${k.replace(/([A-Z])/g,' $1')}</label>
-          <input class="input w-full" type="number" step="0.01" value="${p[k]}" oninput="update(projects[0],'${k}',this.value)"></div>`).join('')}
-      </div>
-    </div>
-
-    <div class="space-y-4">
-      <div class="card p-4">
-        <div class="text-xs text-slate-500">Net Present Value</div>
-        <div class="text-2xl font-bold">${formatCurrency(NPV)}</div>
-      </div>
-      <div class="card p-4">
-        <div class="text-xs text-slate-500">IRR</div>
-        <div class="text-2xl font-bold">${IRR===null?'—':(IRR*100).toFixed(2)+'%'}</div>
-      </div>
-      <div class="card p-4">
-        <div class="text-xs text-slate-500">Payback Period</div>
-        <div class="text-2xl font-bold">${pay} yrs</div>
-      </div>
-    </div>
-  </div>
-
-  <div class="card p-6 mt-6">
-    <h2 class="font-semibold mb-3">Cashflow Timeline</h2>
-    <table class="w-full text-sm">
-      <thead class="text-slate-500"><tr><th>Year</th><th class="text-right">FCF</th><th class="text-right">Cumulative</th></tr></thead>
-      <tbody>${cf.map(r=>`<tr class="border-t"><td>${r.year}</td><td class="text-right">${formatCurrency(r.fcf)}</td><td class="text-right">${formatCurrency(r.cum)}</td></tr>`).join('')}</tbody>
-    </table>
-  </div>`;
+    if (view === 'planner') {
+        scenSwitcher.classList.remove('hidden');
+        scenSwitcher.classList.add('flex');
+        renderHeaderScenarios();
+        renderPlanner(app);
+        updateTable();
+    } else {
+        scenSwitcher.classList.add('hidden');
+        scenSwitcher.classList.remove('flex');
+        
+        if (view === 'inputs') renderInputs(app);
+        else if (view === 'docs') renderDocs(app);
+    }
 }
 
-render();
+/**
+ * ==========================================
+ * VIEW: PROJECT INPUTS (Setup)
+ * ==========================================
+ */
+function renderInputs(container) {
+    container.innerHTML = `
+        <div class="max-w-4xl mx-auto">
+            <h2 class="text-2xl font-bold text-white mb-6">Project Setup</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <!-- General Info -->
+                <div class="bg-[#1c1917] border border-[#292524] p-6 rounded-xl">
+                    <h3 class="text-sm font-bold text-stone-400 uppercase mb-4 border-b border-[#292524] pb-2">General Information</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="text-xs text-stone-500">Project Name</label>
+                            <input type="text" value="${appState.projectName}" oninput="appState.projectName=this.value; document.getElementById('header-project-name').innerText=this.value" class="input-field w-full p-2 rounded">
+                        </div>
+                        <div>
+                            <label class="text-xs text-stone-500">Prepared By</label>
+                            <input type="text" value="${appState.manager}" oninput="appState.manager=this.value" class="input-field w-full p-2 rounded">
+                        </div>
+                        <div>
+                            <label class="text-xs text-stone-500">Currency Symbol</label>
+                            <input type="text" value="${appState.currency}" oninput="appState.currency=this.value" class="input-field w-full p-2 rounded">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Financial Params -->
+                <div class="bg-[#1c1917] border border-[#292524] p-6 rounded-xl">
+                    <h3 class="text-sm font-bold text-stone-400 uppercase mb-4 border-b border-[#292524] pb-2">Financial Parameters</h3>
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-xs text-stone-500">Tax Rate (%)</label>
+                                <input type="number" value="${appState.taxRate}" oninput="appState.taxRate=parseFloat(this.value)" class="input-field w-full p-2 rounded">
+                            </div>
+                            <div>
+                                <label class="text-xs text-stone-500">Inflation Rate (%)</label>
+                                <input type="number" value="${appState.inflationRate}" oninput="appState.inflationRate=parseFloat(this.value)" class="input-field w-full p-2 rounded">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="text-xs text-stone-500">Salvage Value (End of Project)</label>
+                            <input type="number" value="${appState.salvageValue}" oninput="appState.salvageValue=parseFloat(this.value)" class="input-field w-full p-2 rounded text-amber-500 font-bold">
+                            <p class="text-[10px] text-stone-500 mt-1">This amount will be added to the final year's cash flow.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scenario Config -->
+            <div class="bg-[#1c1917] border border-[#292524] p-6 rounded-xl mb-8">
+                <h3 class="text-sm font-bold text-stone-400 uppercase mb-4 border-b border-[#292524] pb-2">Scenario Configuration</h3>
+                <p class="text-xs text-stone-500 mb-4">Rename your scenarios to fit your analysis (e.g., "Covid Case", "Merger Case").</p>
+                <div class="grid grid-cols-3 gap-4">
+                    ${appState.scenarioNames.map((name, i) => `
+                        <div>
+                            <label class="text-xs text-stone-500">Scenario ${i+1}</label>
+                            <input type="text" value="${name}" onchange="updateScenarioName(${i}, this.value)" class="input-field w-full p-2 rounded border-l-4 ${i===0?'border-l-amber-600':(i===1?'border-l-emerald-600':'border-l-red-600')}">
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+
+            <div class="flex justify-end">
+                <button onclick="router('planner')" class="px-6 py-3 bg-amber-600 hover:bg-amber-500 text-white rounded-lg font-bold flex items-center gap-2 transition-all">
+                    Proceed to Planner <i class="ph-bold ph-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * ==========================================
+ * VIEW: PLANNER (Main)
+ * ==========================================
+ */
+function renderPlanner(container) {
+    container.innerHTML = `
+      <div class="max-w-6xl mx-auto">
+        <!-- Top Section: Inputs & Summary -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+            
+            <!-- 1. Input Parameters -->
+            <div class="bg-[#1c1917] border border-[#292524] p-6 rounded-xl shadow-lg">
+                <h2 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                    <i class="ph-fill ph-sliders text-amber-500"></i> Analysis Drivers
+                </h2>
+                
+                <div class="space-y-5">
+                    <div>
+                        <div class="flex justify-between">
+                            <label class="text-xs uppercase text-stone-500 font-bold mb-1">Initial Investment</label>
+                            <span class="text-xs text-amber-500 cursor-pointer hover:underline" onclick="appState.investment=0; updateCalculation(); document.getElementById('inp-investment').value=0;">Set Zero</span>
+                        </div>
+                        <input type="number" id="inp-investment" value="${appState.investment}" class="input-field w-full p-2.5 rounded text-lg font-mono text-white" oninput="updateCalculation()">
+                    </div>
+                    
+                    <div>
+                        <div class="flex justify-between">
+                            <label class="text-xs uppercase text-stone-500 font-bold mb-1">WACC (%)</label>
+                            <button onclick="toggleWaccModal()" class="text-xs text-amber-500 flex items-center gap-1 hover:text-amber-400"><i class="ph-bold ph-calculator"></i> Calculator</button>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="number" id="inp-rate" value="${appState.wacc}" step="0.1" class="input-field w-24 p-2 rounded text-center font-bold text-amber-500" oninput="updateCalculation()">
+                            <input type="range" min="0" max="30" step="0.1" value="${appState.wacc}" class="flex-1" oninput="document.getElementById('inp-rate').value=this.value; updateCalculation()">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs uppercase text-stone-500 font-bold mb-1">Project Duration (Years)</label>
+                        <div class="flex items-center gap-2">
+                            <button onclick="adjYears(-1)" class="p-2 bg-[#292524] hover:bg-stone-700 rounded text-stone-400"><i class="ph-bold ph-minus"></i></button>
+                            <input type="number" id="inp-years" value="${appState.years}" min="1" max="20" class="input-field flex-1 p-2 text-center rounded" readonly>
+                            <button onclick="adjYears(1)" class="p-2 bg-[#292524] hover:bg-stone-700 rounded text-stone-400"><i class="ph-bold ph-plus"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. Decision Summary Card -->
+            <div class="bg-[#1c1917] border border-[#292524] p-6 rounded-xl shadow-lg flex flex-col justify-between relative overflow-hidden group">
+                <div class="absolute top-0 right-0 p-6 opacity-5 group-hover:opacity-10 transition-opacity">
+                    <i class="ph-fill ph-gavel text-8xl text-white"></i>
+                </div>
+                
+                <div>
+                    <h2 class="text-lg font-bold text-white mb-4">Investment Decision</h2>
+                    <div id="decision-badge" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold bg-stone-800 text-stone-400 mb-2">
+                        <span class="w-2 h-2 rounded-full bg-stone-500"></span> CALCULATION PENDING
+                    </div>
+                    <p id="decision-reason" class="text-xs text-stone-500 leading-relaxed mt-2">
+                        System requires cash flow inputs to generate a recommendation.
+                    </p>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4 mt-6 pt-6 border-t border-[#292524]">
+                    <div>
+                        <div class="text-[10px] text-stone-500 uppercase font-bold tracking-wider">Net Present Value</div>
+                        <div id="res-npv" class="text-2xl font-bold text-white font-mono">--</div>
+                    </div>
+                    <div>
+                        <div class="text-[10px] text-stone-500 uppercase font-bold tracking-wider">IRR</div>
+                        <div id="res-irr" class="text-2xl font-bold text-white font-mono">--</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Breakeven Chart -->
+            <div class="bg-[#1c1917] border border-[#292524] p-6 rounded-xl shadow-lg flex flex-col">
+                <h2 class="text-lg font-bold text-white mb-2">Breakeven Horizon</h2>
+                <div class="flex-1 relative min-h-[150px]">
+                    <canvas id="breakevenChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sensitivity Analysis Panel -->
+        <div class="bg-[#1c1917] border border-[#292524] rounded-xl mb-6 p-4">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="text-sm font-bold text-white flex items-center gap-2"><i class="ph-fill ph-trend-up text-amber-500"></i> Sensitivity Analysis (NPV)</h3>
+                <span class="text-[10px] text-stone-500">Impact of WACC variance</span>
+            </div>
+            <div class="grid grid-cols-5 gap-2 text-center" id="sensitivity-grid">
+                <!-- Injected via JS -->
+            </div>
+        </div>
+
+        <!-- Middle Section: Detailed Metrics -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="bg-[#1c1917] border border-[#292524] p-4 rounded-lg">
+                <div class="flex justify-between items-start">
+                    <span class="text-xs text-stone-500 font-bold uppercase">Payback Period</span>
+                    <i class="ph ph-clock text-amber-600"></i>
+                </div>
+                <div id="res-payback" class="text-xl font-bold text-white mt-1">--</div>
+            </div>
+            
+            <div class="bg-[#1c1917] border border-[#292524] p-4 rounded-lg">
+                <div class="flex justify-between items-start">
+                    <span class="text-xs text-stone-500 font-bold uppercase">Disc. Payback</span>
+                    <i class="ph ph-trend-down text-amber-600"></i>
+                </div>
+                <div id="res-dpayback" class="text-xl font-bold text-white mt-1">--</div>
+            </div>
+
+            <div class="bg-[#1c1917] border border-[#292524] p-4 rounded-lg">
+                <div class="flex justify-between items-start">
+                    <span class="text-xs text-stone-500 font-bold uppercase">Profitability Index</span>
+                    <i class="ph ph-chart-bar text-amber-600"></i>
+                </div>
+                <div id="res-pi" class="text-xl font-bold text-white mt-1">--</div>
+            </div>
+
+            <div class="bg-[#1c1917] border border-[#292524] p-4 rounded-lg">
+                <div class="flex justify-between items-start">
+                    <span class="text-xs text-stone-500 font-bold uppercase">ROI (Total)</span>
+                    <i class="ph ph-percent text-amber-600"></i>
+                </div>
+                <div id="res-roi" class="text-xl font-bold text-white mt-1">--</div>
+            </div>
+        </div>
+
+        <!-- Bottom Section: Cash Flow Table -->
+        <div class="bg-[#1c1917] border border-[#292524] rounded-xl shadow-lg overflow-hidden mb-12">
+            <div class="p-6 border-b border-[#292524] flex justify-between items-center bg-[#181614]">
+                <div>
+                    <h3 class="text-lg font-bold text-white">Annual Cash Flows</h3>
+                    <p class="text-xs text-stone-500">Scenario: <span class="text-amber-500 font-bold" id="table-scenario-label">--</span></p>
+                </div>
+                <div class="text-xs text-stone-500 bg-[#292524] px-3 py-1 rounded-full">Editable Values</div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-right">
+                    <thead class="bg-[#141210] text-stone-400 uppercase text-xs font-bold">
+                        <tr>
+                            <th class="p-4 text-left">Period</th>
+                            <th class="p-4">Net Cash Flow</th>
+                            <th class="p-4">Discount Factor</th>
+                            <th class="p-4">Present Value (PV)</th>
+                            <th class="p-4">Cumulative PV</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cf-table-body" class="divide-y divide-[#292524] text-stone-300 font-mono">
+                        <!-- Rows injected by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+      </div>
+    `;
+}
+
+/**
+ * ==========================================
+ * VIEW: DOCUMENTATION
+ * ==========================================
+ */
+function renderDocs(container) {
+    container.innerHTML = `
+        <div class="max-w-4xl mx-auto py-8">
+            <h2 class="text-3xl font-bold text-white mb-2">Knowledge Base</h2>
+            <p class="text-stone-400 mb-8 border-b border-[#292524] pb-4">Understanding Capital Budgeting Metrics</p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-[#1c1917] p-6 rounded-xl border border-[#292524]">
+                    <h3 class="text-amber-500 font-bold text-lg mb-2">Net Present Value (NPV)</h3>
+                    <p class="text-sm text-stone-400 leading-relaxed">The difference between the present value of cash inflows and the present value of cash outflows. <br><br><strong>Interpretation:</strong> <span class="text-white">Positive NPV</span> means the project is expected to add value to the firm. It is generally the gold standard for investment decisions.</p>
+                </div>
+
+                <div class="bg-[#1c1917] p-6 rounded-xl border border-[#292524]">
+                    <h3 class="text-amber-500 font-bold text-lg mb-2">Internal Rate of Return (IRR)</h3>
+                    <p class="text-sm text-stone-400 leading-relaxed">The discount rate that makes the NPV of all cash flows equal to zero.<br><br><strong>Interpretation:</strong> If IRR > WACC (Cost of Capital), the project is viable. It represents the break-even return rate.</p>
+                </div>
+
+                <div class="bg-[#1c1917] p-6 rounded-xl border border-[#292524]">
+                    <h3 class="text-amber-500 font-bold text-lg mb-2">Profitability Index (PI)</h3>
+                    <p class="text-sm text-stone-400 leading-relaxed">The ratio of payoff to investment of a proposed project.<br><br><strong>Formula:</strong> (NPV + Initial Investment) / Initial Investment.<br><strong>Rule:</strong> Accept if PI > 1.0.</p>
+                </div>
+
+                <div class="bg-[#1c1917] p-6 rounded-xl border border-[#292524]">
+                    <h3 class="text-amber-500 font-bold text-lg mb-2">Discounted Payback Period</h3>
+                    <p class="text-sm text-stone-400 leading-relaxed">The amount of time it takes to break even on an investment, accounting for the time value of money. Unlike simple payback, this metric respects that a dollar tomorrow is worth less than a dollar today.</p>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+/**
+ * ==========================================
+ * LOGIC CORE
+ * ==========================================
+ */
+
+function updateScenarioName(index, name) {
+    appState.scenarioNames[index] = name;
+}
+
+function renderHeaderScenarios() {
+    const container = document.getElementById('header-scenarios');
+    container.innerHTML = appState.scenarioNames.map((name, i) => `
+        <button onclick="switchScenario(${i})" 
+            class="scenario-btn px-4 py-1.5 text-xs font-bold rounded-md transition-all 
+            ${appState.currentScenarioIndex === i ? 'active' : 'text-stone-400 hover:text-white'}">
+            ${name}
+        </button>
+    `).join('');
+}
+
+function switchScenario(index) {
+    appState.currentScenarioIndex = index;
+    renderHeaderScenarios();
+    updateTable();
+}
+
+function adjYears(delta) {
+    let n = parseInt(document.getElementById('inp-years').value) + delta;
+    if(n < 1) n = 1;
+    if(n > 20) n = 20;
+    document.getElementById('inp-years').value = n;
+    updateTable();
+}
+
+function updateTable() {
+    const yearInput = parseInt(document.getElementById('inp-years').value) || 1;
+    appState.years = yearInput;
+    
+    // Sync array size for current scenario
+    let flows = appState.scenarioFlows[appState.currentScenarioIndex];
+    if (flows.length < appState.years) {
+        const last = flows[flows.length-1] || 0;
+        while(flows.length < appState.years) flows.push(last);
+    }
+
+    // Update Label
+    const scenName = appState.scenarioNames[appState.currentScenarioIndex];
+    document.getElementById('table-scenario-label').innerText = scenName;
+
+    const tbody = document.getElementById('cf-table-body');
+    tbody.innerHTML = '';
+
+    // Year 0
+    tbody.innerHTML += `
+        <tr class="bg-red-900/10">
+            <td class="p-4 text-left text-stone-400">Year 0 (Investment)</td>
+            <td class="p-4 text-red-400">(${num(appState.investment)})</td>
+            <td class="p-4 text-stone-500">1.0000</td>
+            <td class="p-4 text-red-400">(${num(appState.investment)})</td>
+            <td class="p-4 text-red-400">(${num(appState.investment)})</td>
+        </tr>
+    `;
+
+    for (let i = 0; i < appState.years; i++) {
+        const val = flows[i] || 0;
+        const isFinal = (i === appState.years - 1);
+        const salvageMsg = (isFinal && appState.salvageValue > 0) ? `<br><span class="text-[10px] text-emerald-500">+ ${num(appState.salvageValue)} Salvage</span>` : '';
+        
+        tbody.innerHTML += `
+            <tr>
+                <td class="p-4 text-left font-bold text-stone-500">Year ${i+1}</td>
+                <td class="p-0 relative">
+                    <div class="relative">
+                        <input type="number" 
+                            class="w-full h-full bg-transparent text-right p-4 text-amber-400 focus:bg-[#292524] outline-none transition-colors border-b border-dashed border-[#292524] focus:border-amber-500 font-mono" 
+                            value="${val}" 
+                            onchange="updateFlow(${i}, this.value)"
+                        >
+                        ${isFinal ? `<div class="absolute right-4 bottom-1 text-[10px] text-stone-500 pointer-events-none">${salvageMsg}</div>` : ''}
+                    </div>
+                </td>
+                <td class="p-4 text-stone-500 font-mono" id="row-df-${i}">--</td>
+                <td class="p-4 text-stone-300 font-mono" id="row-pv-${i}">--</td>
+                <td class="p-4 text-stone-400 font-mono" id="row-cum-${i}">--</td>
+            </tr>
+        `;
+    }
+
+    updateCalculation();
+}
+
+function updateFlow(index, value) {
+    appState.scenarioFlows[appState.currentScenarioIndex][index] = parseFloat(value) || 0;
+    updateCalculation();
+}
+
+function updateCalculation() {
+    appState.investment = parseFloat(document.getElementById('inp-investment').value) || 0;
+    appState.wacc = parseFloat(document.getElementById('inp-rate').value) || 0;
+    
+    // Sidebar update
+    document.getElementById('sidebar-wacc').innerHTML = `<i class="ph-fill ph-percent"></i> ${appState.wacc.toFixed(1)}%`;
+
+    const r = appState.wacc / 100;
+    // Get flows from state, NOT just defaults
+    let flows = [...appState.scenarioFlows[appState.currentScenarioIndex]];
+    
+    // Add Salvage Value to final year flow for calculation purposes
+    if(appState.years > 0) {
+        // Ensure flows array has data up to that year
+        if(flows.length < appState.years) {
+             const last = flows[flows.length-1] || 0;
+             while(flows.length < appState.years) flows.push(last);
+        }
+        flows[appState.years - 1] += (appState.salvageValue || 0);
+    }
+
+    let npv = -appState.investment;
+    let cumulative = -appState.investment; 
+    let cumulativePV = -appState.investment; 
+    
+    let payback = null;
+    let dPayback = null;
+    let totalCashIn = 0;
+
+    const chartLabels = ['Y0'];
+    const chartData = [-appState.investment];
+
+    for (let i = 0; i < appState.years; i++) {
+        const cf = flows[i] || 0;
+        const year = i + 1;
+        const df = 1 / Math.pow(1 + r, year);
+        const pv = cf * df;
+
+        const prevCum = cumulative;
+        const prevCumPV = cumulativePV;
+        
+        cumulative += cf;
+        cumulativePV += pv;
+        npv += pv;
+        totalCashIn += cf;
+
+        // UI Update
+        document.getElementById(`row-df-${i}`).innerText = df.toFixed(4);
+        document.getElementById(`row-pv-${i}`).innerText = num(pv);
+        
+        const cumEl = document.getElementById(`row-cum-${i}`);
+        cumEl.innerText = num(cumulativePV);
+        cumEl.className = `p-4 font-mono font-bold ${cumulativePV >= 0 ? 'text-amber-400' : 'text-red-400'}`;
+
+        if (payback === null && cumulative >= 0) payback = (year - 1) + (-prevCum / cf);
+        if (dPayback === null && cumulativePV >= 0) dPayback = (year - 1) + (-prevCumPV / pv);
+
+        chartLabels.push(`Y${year}`);
+        chartData.push(cumulativePV);
+    }
+
+    const irr = calculateIRR([-appState.investment, ...flows.slice(0, appState.years)]);
+    const pi = (npv + appState.investment) / (appState.investment || 1); 
+    const roi = appState.investment > 0 ? ((totalCashIn - appState.investment) / appState.investment) * 100 : 0;
+
+    renderResults(npv, irr, payback, dPayback, pi, roi);
+    renderChart(chartLabels, chartData);
+    renderSensitivity(flows, appState.years, appState.investment);
+}
+
+function calculateIRR(values) {
+    let rate = 0.1;
+    for (let i = 0; i < 1000; i++) {
+        let npv = 0, d = 0;
+        for (let j = 0; j < values.length; j++) {
+            npv += values[j] / Math.pow(1 + rate, j);
+            d -= (j * values[j]) / Math.pow(1 + rate, j + 1);
+        }
+        let newRate = rate - npv / d;
+        if (Math.abs(newRate - rate) < 1e-6) return newRate * 100;
+        rate = newRate;
+    }
+    return null;
+}
+
+function renderResults(npv, irr, payback, dPayback, pi, roi) {
+    const fmt = (v) => v.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).replace('$', appState.currency);
+    
+    document.getElementById('res-npv').innerText = fmt(npv);
+    document.getElementById('res-npv').className = `text-2xl font-bold font-mono ${npv >= 0 ? 'text-amber-400' : 'text-red-400'}`;
+    
+    document.getElementById('res-irr').innerText = irr ? irr.toFixed(2) + '%' : 'N/A';
+    document.getElementById('res-irr').className = `text-2xl font-bold font-mono ${irr >= appState.wacc ? 'text-amber-400' : 'text-red-400'}`;
+
+    document.getElementById('res-payback').innerText = payback ? payback.toFixed(2) + ' Yrs' : '> ' + appState.years + ' Yrs';
+    document.getElementById('res-dpayback').innerText = dPayback ? dPayback.toFixed(2) + ' Yrs' : 'Never';
+    document.getElementById('res-pi').innerText = pi.toFixed(2) + 'x';
+    document.getElementById('res-roi').innerText = roi.toFixed(1) + '%';
+
+    const badge = document.getElementById('decision-badge');
+    const reason = document.getElementById('decision-reason');
+
+    if (npv > 0) {
+        badge.innerHTML = `<i class="ph-bold ph-check-circle"></i> PROJECT VIABLE`;
+        badge.className = "inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold bg-amber-900/30 text-amber-400 border border-amber-900 mb-2";
+        reason.innerHTML = `Project creates <strong class="text-white">${fmt(npv)}</strong> in value. Returns (${irr ? irr.toFixed(1)+'%' : 'N/A'}) exceed cost of capital.`;
+    } else {
+        badge.innerHTML = `<i class="ph-bold ph-x-circle"></i> REJECT PROJECT`;
+        badge.className = "inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold bg-red-900/30 text-red-400 border border-red-900 mb-2";
+        reason.innerHTML = `Project destroys <strong class="text-white">${fmt(Math.abs(npv))}</strong> in value. Returns do not meet the hurdle rate.`;
+    }
+}
+
+/**
+ * ==========================================
+ * EXTRAS
+ * ==========================================
+ */
+function renderSensitivity(flows, years, inv) {
+    const grid = document.getElementById('sensitivity-grid');
+    if(!grid) return;
+    grid.innerHTML = '';
+
+    const baseWacc = appState.wacc;
+    const variances = [-2, -1, 0, 1, 2];
+
+    variances.forEach(v => {
+        const testRate = baseWacc + v;
+        const r = testRate / 100;
+        let npv = -inv;
+        for (let i = 0; i < years; i++) {
+            npv += (flows[i] || 0) / Math.pow(1 + r, i + 1);
+        }
+        
+        const isBase = v === 0;
+        grid.innerHTML += `
+            <div class="bg-[#292524] p-2 rounded border ${isBase ? 'border-amber-500' : 'border-[#292524]'}">
+                <div class="text-[10px] text-stone-500">${testRate.toFixed(1)}%</div>
+                <div class="text-xs font-bold ${npv >= 0 ? 'text-amber-400' : 'text-red-400'}">${(npv/1000).toFixed(1)}k</div>
+            </div>
+        `;
+    });
+}
+
+// WACC Modal
+function toggleWaccModal() {
+    document.getElementById('wacc-modal').classList.toggle('hidden');
+    calcWaccPreview();
+}
+
+function calcWaccPreview() {
+    const ke = parseFloat(document.getElementById('calc-ke').value) || 0;
+    const we = parseFloat(document.getElementById('calc-we').value) || 0;
+    const kd = parseFloat(document.getElementById('calc-kd').value) || 0;
+    const wd = parseFloat(document.getElementById('calc-wd').value) || 0;
+    const t = parseFloat(document.getElementById('calc-t').value) || 0;
+
+    const wacc = ((we/100) * ke) + ((wd/100) * kd * (1 - t/100));
+    document.getElementById('calc-result').innerText = wacc.toFixed(2) + '%';
+    
+    // Auto listener
+    document.querySelectorAll('#wacc-modal input').forEach(i => i.oninput = calcWaccPreview);
+}
+
+function applyWacc() {
+    const txt = document.getElementById('calc-result').innerText;
+    const val = parseFloat(txt);
+    if (!isNaN(val)) {
+        document.getElementById('inp-rate').value = val;
+        toggleWaccModal();
+        updateCalculation();
+    }
+}
+
+// Chart
+function renderChart(labels, data) {
+    const ctx = document.getElementById('breakevenChart').getContext('2d');
+    if (chartInstance) chartInstance.destroy();
+
+    const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+    gradient.addColorStop(0, 'rgba(217, 119, 6, 0.2)'); // Amber
+    gradient.addColorStop(1, 'rgba(217, 119, 6, 0)');
+
+    chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Cumulative Discounted CF',
+                data: data,
+                borderColor: '#d97706',
+                backgroundColor: gradient,
+                borderWidth: 2,
+                fill: true,
+                tension: 0.3,
+                pointBackgroundColor: '#1c1917',
+                pointBorderColor: '#d97706'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { grid: { color: '#292524' }, ticks: { color: '#78716c', callback: (v) => num(v) }, beginAtZero: false },
+                x: { grid: { display: false }, ticks: { color: '#78716c' } }
+            }
+        }
+    });
+}
+
+function num(v) { return new Intl.NumberFormat('en-US').format(Math.round(v)); }
+function resetApp() { if(confirm("Clear all data?")) location.reload(); }
+
 </script>
 </body>
 </html>
