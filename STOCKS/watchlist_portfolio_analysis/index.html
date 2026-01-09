@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="no-referrer">
+    <title>StockSight Terminal</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        
+        /* Custom Maroon Theme */
+        .text-maroon { color: #800000; }
+        .bg-maroon { background-color: #800000; }
+        .border-maroon { border-color: #800000; }
+        
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: #f1f1f1; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 3px; }
+
+        /* Loader */
+        .loader {
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #800000;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Signals */
+        .signal-buy { color: #10B981; background: #ECFDF5; border: 1px solid #10B981; }
+        .signal-sell { color: #EF4444; background: #FEF2F2; border: 1px solid #EF4444; }
+        .signal-hold { color: #F59E0B; background: #FFFBEB; border: 1px solid #F59E0B; }
+        .signal-sip { color: #3B82F6; background: #EFF6FF; border: 1px solid #3B82F6; }
+
+        .watchlist-item:hover .delete-btn { opacity: 1; }
+        
+        .portfolio-input {
+            width: 100%;
+            padding: 4px;
+            border: 1px solid #e5e7eb;
+            border-radius: 4px;
+            font-size: 12px;
+            text-align: right;
+            background: #f9fafb;
+        }
+        .portfolio-input:focus { outline: 1px solid #800000; background: white; }
+
+        .tab-active { border-bottom: 2px solid #800000; color: #800000; font-weight: 600; }
+        .tab-inactive { color: #6b7280; border-bottom: 2px solid transparent; }
+        .tab-inactive:hover { color: #374151; border-bottom: 2px solid #e5e7eb; }
+        
+        .badge-stock { background: #e0e7ff; color: #3730a3; }
+        .badge-fund { background: #fef3c7; color: #92400e; }
+        .badge-etf { background: #dcfce7; color: #166534; }
+        .badge-gfin { background: #fee2e2; color: #991b1b; } 
+        
+        .updating { opacity: 0.6; pointer-events: none; filter: grayscale(0.5); }
+    </style>
+</head>
+<body class="h-screen flex flex-col md:flex-row overflow-hidden text-gray-800" onload="initApp()">
+
+    <!-- SIDEBAR -->
+    <aside class="w-full md:w-80 bg-white border-r border-gray-200 flex flex-col z-20 shadow-lg shrink-0 h-1/3 md:h-full">
+        <div class="p-4 border-b border-gray-200 bg-white">
+            <div class="flex justify-between items-center mb-3">
+                <h1 class="font-bold text-gray-800 tracking-tight flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-maroon"></span>
+                    Terminal
+                </h1>
+                <span id="watchlist-count" class="text-xs text-gray-400 font-mono">0 / 50</span>
+            </div>
+            <div class="relative space-y-2">
+                <div class="relative">
+                    <input type="text" id="stockInput" 
+                        class="w-full pl-8 pr-16 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-maroon focus:ring-1 focus:ring-maroon uppercase"
+                        placeholder="Symbol (INFY) or MF Code"
+                        onkeypress="handleEnter(event)">
+                    <svg class="w-4 h-4 text-gray-400 absolute left-2.5 top-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    <button onclick="processInput()" class="absolute right-1 top-1 bottom-1 px-3 bg-gray-100 hover:bg-gray-200 text-xs font-semibold rounded text-gray-600">Add</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="watchlist-container" class="flex-1 overflow-y-auto custom-scroll">
+            <div id="empty-watchlist" class="p-8 text-center text-gray-400 text-sm italic">
+                Track Stocks, ETFs,<br>or Mutual Funds here.
+            </div>
+        </div>
+
+        <div class="p-3 bg-gray-50 border-t border-gray-200 text-xs flex justify-between text-gray-500">
+            <button onclick="clearAll()" class="hover:text-red-600">Clear All</button>
+            <div id="requestCounter" class="hidden text-maroon font-semibold">Updating...</div>
+        </div>
+    </aside>
+
+    <!-- MAIN DASHBOARD -->
+    <main class="flex-1 overflow-y-auto custom-scroll bg-gray-100 flex flex-col h-2/3 md:h-full relative">
+        
+        <!-- Top Bar -->
+        <div class="bg-white border-b border-gray-200 px-6 py-4 shadow-sm flex flex-wrap justify-between items-center gap-4 sticky top-0 z-10">
+            <div class="flex items-center gap-6">
+                <!-- TABS -->
+                <div class="flex space-x-6 text-sm font-medium">
+                    <button id="tab-portfolio" onclick="switchTab('portfolio')" class="tab-active py-1 transition-colors flex items-center gap-2">
+                        <span>My Portfolio</span>
+                        <span id="badge-port-count" class="bg-red-100 text-maroon text-[10px] px-1.5 py-0.5 rounded-full">0</span>
+                    </button>
+                    <button id="tab-watchlist" onclick="switchTab('watchlist')" class="tab-inactive py-1 transition-colors flex items-center gap-2">
+                        <span>Watchlist</span>
+                        <span id="badge-watch-count" class="bg-gray-100 text-gray-500 text-[10px] px-1.5 py-0.5 rounded-full">0</span>
+                    </button>
+                    <button id="tab-summary" onclick="switchTab('summary')" class="tab-inactive py-1 transition-colors">Signals</button>
+                </div>
+            </div>
+
+            <div class="flex gap-6 text-sm">
+                <div class="text-right">
+                    <p class="text-[10px] text-gray-500 uppercase font-semibold">Current Value</p>
+                    <p id="total-value" class="font-bold text-gray-800 text-lg leading-tight">₹0</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-[10px] text-gray-500 uppercase font-semibold">Total P&L</p>
+                    <p id="total-pnl" class="font-bold text-gray-400 text-lg leading-tight">₹0</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Global Error -->
+        <div id="globalError" class="hidden m-4 bg-red-50 border-l-4 border-red-500 text-red-700 p-4 text-sm rounded shadow-sm">
+            <p class="font-bold">Fetch Error</p>
+            <p id="globalErrorMsg">Unable to fetch data.</p>
+        </div>
+
+        <!-- TAB 1: PORTFOLIO GRID -->
+        <div id="view-portfolio" class="p-4 md:p-6 grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+            <div id="portfolio-empty" class="col-span-full hidden flex-col items-center justify-center text-gray-400 py-12">
+                <p>No holdings yet.</p>
+                <p class="text-xs">Add Qty to a watchlist item to move it here.</p>
+            </div>
+        </div>
+
+        <!-- TAB 2: WATCHLIST GRID -->
+        <div id="view-watchlist" class="hidden p-4 md:p-6 grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+            <div id="watchlist-empty" class="col-span-full hidden flex-col items-center justify-center text-gray-400 py-12">
+                <p>Watchlist empty.</p>
+                <p class="text-xs">Use the sidebar to search and add stocks.</p>
+            </div>
+        </div>
+
+        <!-- TAB 3: SIGNAL SUMMARY -->
+        <div id="view-summary" class="hidden p-4 md:p-6 grid grid-cols-1 md:grid-cols-3 gap-6 h-full items-start">
+            <!-- BUY -->
+            <div class="bg-white rounded-lg border border-green-100 shadow-sm overflow-hidden h-full">
+                <div class="bg-green-50 px-4 py-3 border-b border-green-100 flex justify-between items-center">
+                    <h3 class="text-green-800 font-bold text-sm uppercase">Stock Buys</h3>
+                    <span id="count-buy" class="text-xs bg-white text-green-700 px-2 py-0.5 rounded font-bold">0</span>
+                </div>
+                <div id="list-buy" class="p-2 space-y-1 overflow-y-auto max-h-[500px] custom-scroll"></div>
+            </div>
+            <!-- FUNDS -->
+            <div class="bg-white rounded-lg border border-blue-100 shadow-sm overflow-hidden h-full">
+                <div class="bg-blue-50 px-4 py-3 border-b border-blue-100 flex justify-between items-center">
+                    <h3 class="text-blue-800 font-bold text-sm uppercase">Funds / ETFs</h3>
+                    <span id="count-sip" class="text-xs bg-white text-blue-700 px-2 py-0.5 rounded font-bold">0</span>
+                </div>
+                <div id="list-sip" class="p-2 space-y-1 overflow-y-auto max-h-[500px] custom-scroll"></div>
+            </div>
+            <!-- HOLD -->
+            <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden h-full">
+                <div class="bg-gray-100 px-4 py-3 border-b border-gray-200 flex justify-between items-center">
+                    <h3 class="text-gray-800 font-bold text-sm uppercase">Hold / Sell</h3>
+                    <span id="count-hold" class="text-xs bg-white text-gray-700 px-2 py-0.5 rounded font-bold">0</span>
+                </div>
+                <div id="list-hold" class="p-2 space-y-1 overflow-y-auto max-h-[500px] custom-scroll"></div>
+            </div>
+        </div>
+
+        <div id="main-empty-state" class="flex-1 flex flex-col items-center justify-center text-gray-300 p-10 hidden">
+            <svg class="w-24 h-24 mb-4 opacity-20" fill="currentColor" viewBox="0 0 20 20"><path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z"></path></svg>
+            <p class="text-lg font-medium text-gray-400">Workspace Empty</p>
+            <p class="text-sm text-gray-400">Add Stocks (INFY) or MF Codes (120465).</p>
+        </div>
+
+    </main>
+
+    <script>
+        // --- STATE ---
+        let portfolio = {}; 
+        let livePrices = {}; 
+        let stockAnalysis = {}; 
+        let activeTab = 'portfolio';
+
+        // --- INIT & PERSISTENCE ---
+        function initApp() {
+            const robustData = localStorage.getItem('stockSightData');
+            if (robustData) {
+                const state = JSON.parse(robustData);
+                portfolio = state.portfolio || {};
+                stockAnalysis = state.analysis || {};
+                activeTab = state.activeTab || 'portfolio';
+                
+                Object.keys(stockAnalysis).forEach(sym => {
+                    if(stockAnalysis[sym].price) livePrices[sym] = stockAnalysis[sym].price;
+                });
+            } else if (localStorage.getItem('stockPortfolio')) {
+                portfolio = JSON.parse(localStorage.getItem('stockPortfolio'));
+            }
+
+            const symbols = Object.keys(portfolio);
+            if (symbols.length > 0) {
+                document.getElementById('empty-watchlist').classList.add('hidden');
+                document.getElementById('main-empty-state').classList.add('hidden');
+                
+                symbols.forEach(sym => {
+                    if (stockAnalysis[sym]) {
+                        renderCard(sym, stockAnalysis[sym], true); 
+                    } else {
+                        createCardSkeleton(sym);
+                    }
+                    renderWatchlistItem(sym, !stockAnalysis[sym]);
+                });
+
+                setTimeout(() => {
+                    symbols.forEach(sym => fetchAsset(sym));
+                }, 100);
+            } else {
+                document.getElementById('main-empty-state').classList.remove('hidden');
+            }
+
+            switchTab(activeTab);
+            updateViewCounts();
+            calculateTotals();
+        }
+
+        function saveState() {
+            const state = {
+                portfolio: portfolio,
+                analysis: stockAnalysis,
+                activeTab: activeTab
+            };
+            localStorage.setItem('stockSightData', JSON.stringify(state));
+            calculateTotals();
+            updateViewCounts();
+            renderSignalSummary();
+        }
+
+        // --- PROXIES ---
+        const PROXIES = [
+            { url: (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`, type: 'text' },
+            { url: (url) => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}&t=${Date.now()}`, type: 'json' },
+            { url: (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`, type: 'text' },
+            { url: (url) => `https://thingproxy.freeboard.io/fetch/${encodeURIComponent(url)}`, type: 'text' }
+        ];
+        let activeRequests = 0;
+
+        // --- FETCHING ---
+        async function fetchWithFallback(targetUrl) {
+            let lastError;
+            for (const proxy of PROXIES) {
+                try {
+                    const controller = new AbortController();
+                    const id = setTimeout(() => controller.abort(), 8000); 
+                    const res = await fetch(proxy.url(targetUrl), { signal: controller.signal });
+                    clearTimeout(id);
+                    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+                    let content = proxy.type === 'json' ? (await res.json()).contents : await res.text();
+                    if(!content || content.length < 50) throw new Error("Blocked");
+                    if(targetUrl.includes('yahoo') && !content.trim().startsWith('{') && !content.includes('QuoteSummaryStore')) throw new Error("Invalid Yahoo");
+                    return content;
+                } catch(e) { lastError = e; }
+            }
+            throw lastError;
+        }
+
+        // --- ASSET FETCH LOGIC ---
+        const ETF_KEYWORDS = ['BEES', 'ETF', 'GOLD', 'LIQUID', 'HANGSENG', 'NIFTY', 'SENSEX', 'MOVALUE', 'MOMENTUM', 'MIDCAP', 'SMALLCAP', 'JUNIOR'];
+
+        async function fetchAsset(input) {
+            activeRequests++;
+            updateReqCount();
+            const sym = input.toUpperCase();
+            
+            try {
+                if (/^\d{5,6}$/.test(sym)) await fetchMutualFund(sym);
+                else await fetchStockOrETF(sym);
+                
+                const card = document.getElementById(`card-${sym}`);
+                if(card) card.classList.remove('updating');
+            } catch(e) {
+                console.warn(sym, e);
+                renderErrorCard(sym, e.message);
+            } finally {
+                activeRequests--;
+                updateReqCount();
+            }
+        }
+
+        async function fetchMutualFund(code) {
+            const url = `https://api.mfapi.in/mf/${code}`;
+            const res = await fetch(url);
+            if(!res.ok) throw new Error("MF Not Found");
+            const json = await res.json();
+            if(!json.meta) throw new Error("Invalid MF");
+            const data = { name: json.meta.scheme_name, price: parseFloat(json.data[0].nav), type: 'FUND', meta: json.meta.fund_house };
+            livePrices[code] = data.price;
+            renderCard(code, data);
+        }
+
+        async function fetchStockOrETF(sym) {
+            const isLikelyETF = ETF_KEYWORDS.some(k => sym.includes(k));
+            
+            // 1. Screener
+            if (!isLikelyETF) {
+                try {
+                    const html = await fetchWithFallback(`https://www.screener.in/company/${sym}/consolidated/`);
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const ratios = doc.getElementById('top-ratios');
+                    if (ratios) {
+                        const getVal = (txt) => {
+                            for(let li of ratios.querySelectorAll('li')) {
+                                if(li.innerText.toLowerCase().includes(txt.toLowerCase())) return parseFloat(li.querySelector('.number')?.innerText.replace(/,/g,'') || 0);
+                            }
+                            return null;
+                        };
+                        const price = getVal('Current Price');
+                        const pe = getVal('Stock P/E');
+                        if(price) {
+                            const data = { name: doc.querySelector('h1')?.innerText || sym, price: price, pe: pe, roe: getVal('ROE'), mcap: getVal('Market Cap'), type: (pe === null || pe === 0) ? 'ETF' : 'STOCK' };
+                            const idx = html.indexOf("Compounded Sales Growth");
+                            if(idx > -1) {
+                                const sub = html.substring(idx, idx+1500);
+                                let m = sub.match(/3 Years:[\s\S]*?([0-9\.-]+)\s?%/i);
+                                data.growth = m ? parseFloat(m[1]) : 0;
+                            }
+                            livePrices[sym] = data.price;
+                            renderCard(sym, data);
+                            return; 
+                        }
+                    }
+                } catch (e) {}
+            }
+
+            // 2. Yahoo
+            try {
+                let targetSym = sym.endsWith('.NS') || sym.endsWith('.BO') ? sym : `${sym}.NS`;
+                let data = await fetchYahooQuote(targetSym);
+                if (!data && !sym.includes('.')) data = await fetchYahooQuote(`${sym}.BO`);
+                if (!data && !sym.includes('.')) data = await fetchYahooQuote(sym);
+                if (data) {
+                    livePrices[sym] = data.price;
+                    renderCard(sym, data);
+                    return;
+                }
+            } catch (yErr) {}
+
+            // 3. Google Finance
+            try {
+                const gData = await fetchGoogleFinance(sym);
+                if (gData) {
+                    livePrices[sym] = gData.price;
+                    renderCard(sym, gData);
+                    return;
+                }
+            } catch (gErr) {}
+
+            throw new Error("Asset not found");
+        }
+
+        async function fetchYahooQuote(yahooSym) {
+            try {
+                const jsonStr = await fetchWithFallback(`https://query1.finance.yahoo.com/v7/finance/quote?symbols=${yahooSym}`);
+                const json = JSON.parse(jsonStr);
+                const result = json?.quoteResponse?.result?.[0];
+                if (result && result.regularMarketPrice) {
+                    return { name: result.shortName || result.longName || yahooSym, price: result.regularMarketPrice, type: (result.trailingPE) ? 'STOCK' : 'ETF', pe: result.trailingPE || null, roe: null };
+                }
+            } catch(e) {}
+            return null;
+        }
+
+        async function fetchGoogleFinance(sym) {
+            let html = await fetchWithFallback(`https://www.google.com/finance/quote/${sym}:NSE`);
+            if (html.includes("Couldn't find")) html = await fetchWithFallback(`https://www.google.com/finance/quote/${sym}:BSE`);
+            const priceMatch = html.match(/class="YMlKec fxKbKc">₹?([0-9,.]+)</);
+            const nameMatch = html.match(/<div class="zzDege">([^<]+)</);
+            if (priceMatch) {
+                return { name: nameMatch ? nameMatch[1] : sym, price: parseFloat(priceMatch[1].replace(/,/g, '')), type: 'ETF', pe: null, roe: null, source: 'Google' };
+            }
+            return null;
+        }
+
+        // --- RENDERING ---
+        function renderCard(sym, data, isCached = false) {
+            // Determine Container based on Qty
+            const qty = portfolio[sym].qty || 0;
+            const targetContainerId = qty > 0 ? 'view-portfolio' : 'view-watchlist';
+            const container = document.getElementById(targetContainerId);
+            
+            // Check if card exists
+            let card = document.getElementById(`card-${sym}`);
+            
+            // Logic: Create if not exists OR Move if in wrong container
+            if (!card) {
+                card = document.createElement('div');
+                card.id = `card-${sym}`;
+                container.appendChild(card);
+            } else if (card.parentElement.id !== targetContainerId) {
+                // Move logic
+                container.appendChild(card);
+            }
+
+            // Signal Logic
+            let signal = "HOLD", sigClass = "signal-hold", typeBadge = "badge-stock", metricsHTML = "";
+            let sourceTag = data.source === 'Google' ? `<span class="badge-gfin text-[9px] px-1 rounded ml-1">G-FIN</span>` : "";
+
+            if(data.type === 'STOCK') {
+                typeBadge = "badge-stock";
+                const pe = data.pe || 0;
+                const growth = data.growth || 0;
+                const peg = (growth > 0 && pe > 0) ? pe / growth : 0;
+                let score = 0;
+                if(pe < 25 && pe > 0) score++; else if(pe > 60) score--;
+                if(peg > 0 && peg < 1.5) score++;
+                if(growth > 12) score++;
+                if(data.roe > 15) score++;
+                if(score >= 3) { signal = "BUY"; sigClass = "signal-buy"; }
+                else if(score <= 0) { signal = "SELL"; sigClass = "signal-sell"; }
+
+                metricsHTML = `
+                    <div class="grid grid-cols-2 gap-y-2 gap-x-4 text-xs mt-auto">
+                        <div class="flex justify-between"><span class="text-gray-500">P/E</span><span class="font-medium">${pe}</span></div>
+                        <div class="flex justify-between"><span class="text-gray-500">Sales Gr.</span><span class="font-medium ${growth > 15 ? 'text-green-600':''}">${growth}%</span></div>
+                        <div class="flex justify-between"><span class="text-gray-500">ROE</span><span class="font-medium ${data.roe > 15 ? 'text-green-600':''}">${data.roe}%</span></div>
+                        <div class="flex justify-between"><span class="text-gray-500">M.Cap</span><span class="font-medium">${data.mcap ? (data.mcap/1000).toFixed(1)+'k Cr' : '-'}</span></div>
+                    </div>`;
+            } else {
+                signal = "SIP / HOLD"; sigClass = "signal-sip";
+                typeBadge = data.type === 'ETF' ? "badge-etf" : "badge-fund";
+                const subType = data.type === 'FUND' ? 'Mutual Fund' : (data.source === 'Google' ? 'ETF (G-Fin)' : 'ETF');
+                metricsHTML = `
+                    <div class="mt-auto text-xs text-gray-500 bg-gray-50 p-2 rounded">
+                        <div class="flex justify-between mb-1"><span>Type</span><span class="font-bold text-gray-700">${subType}</span></div>
+                        <div class="text-[10px] italic">${data.type === 'FUND' ? 'NAV updated daily' : 'Live Price'}</div>
+                    </div>`;
+            }
+
+            stockAnalysis[sym] = { signal, name: data.name, price: data.price, type: data.type, pe: data.pe, growth: data.growth, roe: data.roe, mcap: data.mcap, source: data.source };
+            if(!isCached) saveState();
+
+            const savedQty = portfolio[sym].qty || '';
+            const savedAvg = portfolio[sym].avg || '';
+            const opacityClass = isCached ? 'updating' : '';
+
+            card.className = `bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden min-h-[300px] flex flex-col relative ${opacityClass}`;
+            card.innerHTML = `
+                <div class="p-5 flex flex-col h-full">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h3 class="font-bold text-gray-800 text-lg leading-tight truncate w-40" title="${data.name}">${data.name}</h3>
+                            <div class="flex gap-2 mt-1">
+                                <span class="text-[10px] font-mono text-gray-500 bg-gray-100 px-1 rounded">${sym}</span>
+                                <span class="text-[10px] px-1 rounded font-bold ${typeBadge}">${data.type}</span>
+                                ${sourceTag}
+                            </div>
+                        </div>
+                        <div class="text-[10px] font-bold px-2 py-1 rounded border ${sigClass}">${signal}</div>
+                    </div>
+                    <div class="flex justify-between items-end pb-3 border-b border-gray-100 mb-3">
+                        <div>
+                            <p class="text-[10px] text-gray-400 uppercase tracking-wide">${data.type === 'FUND' ? 'NAV' : 'Price'}</p>
+                            <p class="text-2xl font-bold text-gray-800">₹${data.price.toLocaleString()}</p>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 rounded border border-gray-100 p-2 mb-4">
+                        <div class="flex gap-2 mb-1">
+                            <div class="flex-1"><label class="text-[9px] text-gray-500 uppercase block mb-1">Qty</label><input type="number" class="portfolio-input" placeholder="0" value="${savedQty}" onchange="updateHolding('${sym}', 'qty', this.value)"></div>
+                            <div class="flex-1"><label class="text-[9px] text-gray-500 uppercase block mb-1">Avg</label><input type="number" class="portfolio-input" placeholder="₹" value="${savedAvg}" onchange="updateHolding('${sym}', 'avg', this.value)"></div>
+                        </div>
+                        <div class="flex justify-between items-center text-xs pt-1"><span class="text-gray-400">P&L:</span><span id="pnl-${sym}" class="font-bold text-gray-300">--</span></div>
+                    </div>
+                    ${metricsHTML}
+                </div>`;
+            
+            if(!isCached) {
+                renderWatchlistItem(sym, false);
+                updateCardPnL(sym);
+                calculateTotals();
+                updateViewCounts();
+            } else {
+                updateCardPnL(sym);
+            }
+        }
+
+        function createCardSkeleton(sym) {
+            const qty = portfolio[sym].qty || 0;
+            const containerId = qty > 0 ? 'view-portfolio' : 'view-watchlist';
+            const grid = document.getElementById(containerId);
+            
+            const card = document.createElement('div');
+            card.id = `card-${sym}`;
+            card.className = "bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden min-h-[300px] relative";
+            card.innerHTML = `<div class="absolute inset-0 flex flex-col items-center justify-center z-10 bg-white/80"><div class="loader mb-2"></div><p class="text-xs text-gray-400">Loading ${sym}...</p></div>`;
+            grid.insertBefore(card, grid.firstChild);
+        }
+
+        function renderWatchlistItem(sym, isLoading) {
+            const container = document.getElementById('watchlist-container');
+            let item = document.getElementById(`wl-${sym}`);
+            const price = livePrices[sym] ? `₹${livePrices[sym].toLocaleString()}` : '--';
+            const qty = portfolio[sym].qty || 0;
+            const icon = qty > 0 ? '💼' : '👁️'; // Briefcase vs Eye
+
+            if (!item) {
+                item = document.createElement('div');
+                item.id = `wl-${sym}`;
+                item.className = "watchlist-item p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer flex justify-between items-center group transition-colors";
+                item.onclick = () => { 
+                    // Auto-switch to correct tab
+                    const targetTab = portfolio[sym].qty > 0 ? 'portfolio' : 'watchlist';
+                    switchTab(targetTab);
+                    setTimeout(() => document.getElementById(`card-${sym}`)?.scrollIntoView({behavior:'smooth'}), 50); 
+                };
+                container.insertBefore(item, container.firstChild);
+            }
+            item.innerHTML = isLoading ? 
+                `<div><span class="text-sm font-semibold">${sym}</span></div><div class="loader w-3 h-3 border-gray-300 border-t-maroon"></div>` : 
+                `<div><span class="mr-2 text-xs opacity-50">${icon}</span><span class="text-sm font-semibold">${sym}</span></div><div class="text-right"><span class="font-mono text-sm">${price}</span><button onclick="event.stopPropagation(); removeStock('${sym}')" class="delete-btn opacity-0 group-hover:opacity-100 text-[10px] text-red-500 uppercase ml-2">Del</button></div>`;
+        }
+
+        function renderErrorCard(sym, msg) {
+            const qty = portfolio[sym].qty || 0;
+            const containerId = qty > 0 ? 'view-portfolio' : 'view-watchlist';
+            const container = document.getElementById(containerId);
+            let card = document.getElementById(`card-${sym}`);
+            
+            if (!card) {
+                card = document.createElement('div');
+                card.id = `card-${sym}`;
+                container.appendChild(card);
+            }
+
+            card.innerHTML = `<div class="flex flex-col items-center justify-center h-full p-6 text-center"><span class="text-red-400 font-bold mb-1">Failed</span><span class="text-xs text-gray-400 mb-4 break-words w-full px-4">${msg || "Proxy Error"}</span><button onclick="fetchAsset('${sym}')" class="px-3 py-1 bg-white border border-red-200 text-red-500 text-xs rounded hover:bg-red-50 mb-2">Retry</button><button onclick="removeStock('${sym}')" class="text-xs text-gray-400 underline">Remove</button></div>`;
+            const item = document.getElementById(`wl-${sym}`);
+            if(item) item.innerHTML = `<span class="text-sm font-semibold text-gray-400">${sym}</span><span class="text-xs text-red-500">Error</span>`;
+        }
+
+        // --- CORE FUNCTIONS ---
+        function processInput() {
+            const input = document.getElementById('stockInput');
+            const val = input.value.trim().toUpperCase();
+            if(!val) return;
+            const symbols = val.split(',').map(s => s.trim()).filter(s => s);
+            input.value = '';
+            document.getElementById('empty-watchlist').classList.add('hidden');
+            document.getElementById('main-empty-state').classList.add('hidden');
+            symbols.forEach(sym => {
+                if(portfolio[sym]) return;
+                portfolio[sym] = { qty: 0, avg: 0 };
+                // New items go to Watchlist (qty=0)
+                switchTab('watchlist'); 
+                renderWatchlistItem(sym, true);
+                createCardSkeleton(sym);
+                fetchAsset(sym);
+            });
+            saveState(); 
+        }
+
+        function removeStock(sym) {
+            delete portfolio[sym]; delete livePrices[sym]; delete stockAnalysis[sym];
+            const w = document.getElementById(`wl-${sym}`);
+            const c = document.getElementById(`card-${sym}`);
+            if(w) w.remove(); if(c) c.remove();
+            if(Object.keys(portfolio).length===0) {
+                document.getElementById('empty-watchlist').classList.remove('hidden');
+                document.getElementById('main-empty-state').classList.remove('hidden');
+            }
+            saveState();
+        }
+
+        function clearAll() {
+            if(confirm("Clear All?")) {
+                portfolio = {}; livePrices = {}; stockAnalysis = {};
+                document.getElementById('watchlist-container').innerHTML = `<div id="empty-watchlist" class="p-8 text-center text-gray-400 text-sm italic">Add stocks...</div>`;
+                document.getElementById('view-holdings').innerHTML = ''; // This was old id, cleaning up not needed since we rebuild
+                document.getElementById('view-portfolio').innerHTML = '';
+                document.getElementById('view-watchlist').innerHTML = '';
+                document.getElementById('main-empty-state').classList.remove('hidden');
+                saveState();
+            }
+        }
+
+        function handleEnter(e) { if(e.key === "Enter") processInput(); }
+        function updateReqCount() { document.getElementById('requestCounter').style.display = activeRequests > 0 ? 'block' : 'none'; }
+        
+        window.updateHolding = function(sym, field, val) { 
+            if(!portfolio[sym]) return; 
+            const oldQty = portfolio[sym].qty;
+            portfolio[sym][field] = parseFloat(val) || 0; 
+            
+            // Check if we need to move card between tabs
+            if (field === 'qty') {
+                const newQty = portfolio[sym].qty;
+                if ((oldQty === 0 && newQty > 0) || (oldQty > 0 && newQty === 0)) {
+                    // Re-render card to move it
+                    if (stockAnalysis[sym]) renderCard(sym, stockAnalysis[sym]);
+                    // Update icon in sidebar
+                    renderWatchlistItem(sym, false);
+                }
+            }
+            
+            saveState(); 
+            updateCardPnL(sym); 
+            calculateTotals(); 
+        }
+
+        function updateCardPnL(sym) { if(!portfolio[sym] || !livePrices[sym]) return; const qty = portfolio[sym].qty; const avg = portfolio[sym].avg; const cur = livePrices[sym]; const pnl = (qty * cur) - (qty * avg); const el = document.getElementById(`pnl-${sym}`); if(el) { el.innerText = `₹${Math.round(pnl).toLocaleString()}`; el.className = `font-bold text-xs ${pnl >= 0 ? 'text-green-600' : 'text-red-500'}`; } }
+        function calculateTotals() { let tInv = 0, tCur = 0; for(let sym in portfolio) { if(livePrices[sym]) { const q = portfolio[sym].qty; tInv += q * portfolio[sym].avg; tCur += q * livePrices[sym]; } } const pnl = tCur - tInv; document.getElementById('total-value').innerText = `₹${Math.round(tCur).toLocaleString()}`; const pnlEl = document.getElementById('total-pnl'); pnlEl.innerText = `₹${Math.round(pnl).toLocaleString()}`; pnlEl.className = `font-bold text-lg leading-tight ${pnl >= 0 ? 'text-green-600' : 'text-red-500'}`; }
+        
+        function switchTab(tab) { 
+            activeTab = tab; 
+            saveState(); 
+            const views = { 'portfolio': 'view-portfolio', 'watchlist': 'view-watchlist', 'summary': 'view-summary' };
+            const tabs = { 'portfolio': 'tab-portfolio', 'watchlist': 'tab-watchlist', 'summary': 'tab-summary' };
+            const es = document.getElementById('main-empty-state'); 
+
+            if(Object.keys(portfolio).length === 0) {
+                Object.values(views).forEach(id => document.getElementById(id).classList.add('hidden'));
+                es.classList.remove('hidden');
+                return;
+            } else {
+                es.classList.add('hidden');
+            }
+
+            // Hide all, Show selected
+            Object.keys(views).forEach(key => {
+                const el = document.getElementById(views[key]);
+                const btn = document.getElementById(tabs[key]);
+                if (key === tab) {
+                    el.classList.remove('hidden');
+                    btn.className = "tab-active py-1 transition-colors flex items-center gap-2";
+                } else {
+                    el.classList.add('hidden');
+                    btn.className = "tab-inactive py-1 transition-colors flex items-center gap-2";
+                }
+            });
+            
+            if(tab === 'summary') renderSignalSummary();
+        }
+
+        function renderSignalSummary() { const listBuy = document.getElementById('list-buy'); const listSip = document.getElementById('list-sip'); const listHold = document.getElementById('list-hold'); listBuy.innerHTML = ''; listSip.innerHTML = ''; listHold.innerHTML = ''; let counts = { BUY: 0, SIP: 0, HOLD: 0 }; Object.entries(stockAnalysis).forEach(([sym, data]) => { let cat = 'HOLD'; if(data.signal === 'BUY') cat = 'BUY'; if(data.type === 'FUND' || data.type === 'ETF') cat = 'SIP'; else if(data.signal === 'SELL') cat = 'HOLD'; counts[cat]++; const li = document.createElement('div'); li.className = "p-2 bg-gray-50 rounded mb-1 flex justify-between text-xs"; li.innerHTML = `<span class="font-bold">${data.name}</span><span>₹${data.price.toLocaleString()}</span>`; if(cat === 'BUY') listBuy.appendChild(li); else if(cat === 'SIP') listSip.appendChild(li); else listHold.appendChild(li); }); document.getElementById('count-buy').innerText = counts.BUY; document.getElementById('count-sip').innerText = counts.SIP; document.getElementById('count-hold').innerText = counts.HOLD; }
+        
+        function updateViewCounts() {
+            let portCount = 0;
+            let watchCount = 0;
+            Object.values(portfolio).forEach(p => {
+                if (p.qty > 0) portCount++;
+                else watchCount++;
+            });
+            document.getElementById('watchlist-count').innerText = `${Object.keys(portfolio).length} / 50`;
+            document.getElementById('badge-port-count').innerText = portCount;
+            document.getElementById('badge-watch-count').innerText = watchCount;
+            
+            // Toggle empty states for specific tabs
+            document.getElementById('portfolio-empty').style.display = portCount === 0 ? 'flex' : 'none';
+            document.getElementById('watchlist-empty').style.display = watchCount === 0 ? 'flex' : 'none';
+        }
+    </script>
+</body>
+</html>
