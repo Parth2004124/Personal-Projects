@@ -849,6 +849,25 @@
             const pScore = calculatePortersScore(data);
             const viewMode = cardViews[sym] || 'fundamental'; // Default view
             let longTermLabel = "";
+            
+            // Extension: Fundamental Conviction
+            const conviction = calculateConviction(fScore, pScore);
+            const convictionBadge = getConvictionBadge(conviction);
+
+            // Extension: Business Trajectory
+            const trajectory = calculateTrajectory(data);
+            const trajectoryBadge = getTrajectoryBadge(trajectory);
+
+            // Extension: Timing Engine
+            const timing = calculateTiming(data);
+            const timingBadge = getTimingBadge(timing);
+
+            // Extension: Final Decision Synthesizer
+            const decision = calculateFinalDecision(conviction, trajectory, timing, data.type);
+            const decisionBlock = getDecisionBlock(decision);
+
+            // NEW EXTENSION: Entry-Exit Execution Layer (Moreshwar Sir’s Convention)
+            const moreshwarBlock = getMoreshwarBlock(data.price, fScore, pScore, qty > 0, decision.action);
 
             if(data.type === 'STOCK' && fScore) {
                 typeBadge = "badge-stock";
@@ -891,6 +910,8 @@
                                 <div class="bg-gray-50 p-1.5 rounded"><span class="text-gray-400 block">Mgmt</span><span class="font-bold text-gray-700">${fScore.management}/20</span></div>
                                 <div class="bg-gray-50 p-1.5 rounded"><span class="text-gray-400 block">Risk</span><span class="font-bold text-gray-700">${fScore.risk}/20</span></div>
                             </div>
+                            ${decisionBlock}
+                            ${moreshwarBlock}
                         </div>`;
                 } else if (viewMode === 'porter') {
                     // PORTER'S VIEW
@@ -910,10 +931,13 @@
                                 <div class="bg-blue-50 p-1.5 rounded"><span class="text-gray-400 block">Substitutes</span><span class="font-bold text-blue-800">${pScore.substitutes}/20</span></div>
                                 <div class="col-span-2 bg-blue-50 p-1.5 rounded flex justify-between"><span class="text-gray-400">Competitive Rivalry</span><span class="font-bold text-blue-800">${pScore.rivalry}/20</span></div>
                             </div>
+                            ${decisionBlock}
+                            ${moreshwarBlock}
                         </div>`;
                 }
 
             } else if (fScore) {
+                // ... existing ETF logic ...
                 signal = "SIP"; sigClass = "signal-sip";
                 if (fScore.total > 70) signal = "BUY"; 
                 
@@ -942,6 +966,8 @@
                             <div class="bg-gray-50 p-1.5 rounded"><span class="text-gray-400 block">${l3}</span><span class="font-bold text-gray-700">${fScore.management}/20</span></div>
                             <div class="bg-gray-50 p-1.5 rounded"><span class="text-gray-400 block">${l4}</span><span class="font-bold text-gray-700">${fScore.risk}/20</span></div>
                         </div>
+                        ${decisionBlock}
+                        ${moreshwarBlock}
                     </div>`;
             } else {
                  metricsHTML = ``; 
@@ -966,9 +992,12 @@
                     <div class="flex justify-between items-start mb-2">
                         <div class="overflow-hidden">
                             <h3 class="font-bold text-gray-800 text-lg leading-tight truncate w-40" title="${data.name}">${data.name}</h3>
-                            <div class="flex gap-2 mt-1 items-center">
+                            <div class="flex gap-2 mt-1 items-center flex-wrap">
                                 <span class="text-[10px] font-mono text-gray-500 bg-gray-100 px-1 rounded">${cleanSym}</span>
                                 <span class="text-[10px] px-1 rounded font-bold ${typeBadge}">${data.type}</span>
+                                ${convictionBadge}
+                                ${trajectoryBadge}
+                                ${timingBadge}
                                 ${sourceTag}
                             </div>
                         </div>
@@ -1172,6 +1201,233 @@
             
             document.getElementById('portfolio-empty').style.display = portCount === 0 ? 'flex' : 'none';
             document.getElementById('watchlist-empty').style.display = watchCount === 0 ? 'flex' : 'none';
+        }
+
+        // --- EXTENSION MODULE: FUNDAMENTAL CONVICTION ---
+        function calculateConviction(fScore, pScore) {
+            // Logic for Stocks with Porter's data
+            if (pScore) {
+                // Combined strength: Average of Fundamental (Internal) and Porter's (External)
+                const avg = (fScore.total + pScore.total) / 2;
+                if (avg >= 60) return "Strong";
+                if (avg <= 40) return "Weak";
+                return "Stable";
+            }
+            
+            // Logic for Funds/ETFs (Fundamental only)
+            if (fScore.total >= 65) return "Strong";
+            if (fScore.total <= 40) return "Weak";
+            return "Stable";
+        }
+
+        function getConvictionBadge(label) {
+            if (!label) return '';
+            const styles = {
+                'Strong': 'bg-emerald-100 text-emerald-800 border-emerald-200',
+                'Stable': 'bg-amber-100 text-amber-800 border-amber-200',
+                'Weak': 'bg-rose-100 text-rose-800 border-rose-200'
+            };
+            return `<span class="text-[9px] font-bold px-1.5 py-0.5 rounded border ${styles[label]} uppercase tracking-wider mx-1">${label}</span>`;
+        }
+
+        // --- EXTENSION MODULE: BUSINESS TRAJECTORY ---
+        function calculateTrajectory(data) {
+            if (data.type !== 'STOCK') return null;
+            
+            const sales = data.growth || 0;
+            const profit = data.profitGrowth || 0;
+            const roe = data.roe || 0;
+
+            // Red Flags
+            if (sales < 0 || profit < 0) return "Deteriorating";
+            if (profit < 5 && sales < 5) return "Deteriorating"; // Stagnation
+
+            // Green Flags
+            // 1. Operating Leverage (Margins expanding) + Healthy Growth
+            if (profit > sales && sales > 5 && profit > 10) return "Improving";
+            
+            // 2. High Performance compounder
+            if (roe > 20 && profit > 10) return "Improving";
+
+            return "Flat";
+        }
+
+        function getTrajectoryBadge(label) {
+            if (!label) return '';
+            const styles = {
+                'Improving': 'bg-indigo-100 text-indigo-800 border-indigo-200',
+                'Flat': 'bg-gray-100 text-gray-600 border-gray-200',
+                'Deteriorating': 'bg-orange-100 text-orange-800 border-orange-200'
+            };
+            return `<span class="text-[9px] font-bold px-1.5 py-0.5 rounded border ${styles[label]} uppercase tracking-wider mx-1">${label}</span>`;
+        }
+
+        // --- EXTENSION MODULE: TIMING ENGINE (Lightweight/Binary) ---
+        function calculateTiming(data) {
+            const price = data.price || 0;
+            const r1y = data.returns?.r1y || 0;
+            const r3y = data.returns?.r3y || 0;
+            const ma200 = data.technicals?.ma200 || 0; // Available for ETFs, sometimes missing for Stocks
+
+            // 1. Determine Trend Direction
+            let trend = 'Neutral';
+            if (ma200 > 0) {
+                // If we have MA200 (Technically rigorous)
+                trend = price > ma200 ? 'Up' : 'Down';
+            } else {
+                // Fallback: Use 1Y Return sign (Simple momentum)
+                if (r1y > 10) trend = 'Up';
+                else if (r1y < -5) trend = 'Down';
+            }
+
+            // 2. Determine Momentum Status (Derivative)
+            // Is the trend accelerating or decelerating?
+            let momentum = 'Stable';
+            if (r1y > r3y + 5) momentum = 'Improving'; // 1Y performance beating 3Y avg
+            else if (r1y < r3y - 5) momentum = 'Weakening';
+
+            // 3. Synthesis Output
+            if (trend === 'Up' && momentum === 'Improving') return "Favourable";
+            if (trend === 'Down' && momentum === 'Weakening') return "Unfavourable";
+            
+            // Mixed Cases
+            if (trend === 'Up' && momentum === 'Weakening') return "Neutral"; // Up but losing steam
+            if (trend === 'Down' && momentum === 'Improving') return "Neutral"; // Down but recovering
+            
+            // Default flat/stable
+            if (r1y > 0) return "Neutral";
+            return "Unfavourable";
+        }
+
+        function getTimingBadge(label) {
+            if (!label) return '';
+            const styles = {
+                'Favourable': 'bg-teal-100 text-teal-800 border-teal-200',
+                'Neutral': 'bg-slate-100 text-slate-600 border-slate-200',
+                'Unfavourable': 'bg-red-100 text-red-800 border-red-200'
+            };
+            return `<span class="text-[9px] font-bold px-1.5 py-0.5 rounded border ${styles[label]} uppercase tracking-wider mx-1">TIMING: ${label}</span>`;
+        }
+
+        // --- EXTENSION MODULE: FINAL DECISION SYNTHESIZER ---
+        function calculateFinalDecision(conviction, trajectory, timing, type) {
+            let action = "WAIT";
+            let summary = "";
+
+            // Handle ETF/Funds slightly differently (Trajectory might be null)
+            const isFund = type !== 'STOCK';
+            const effTrajectory = isFund ? (timing === 'Favourable' ? 'Improving' : 'Flat') : trajectory;
+
+            // 1. AVOID Logic
+            if (conviction === 'Weak') {
+                action = "AVOID";
+                summary = "The fundamental quality does not meet the required threshold for investment. The business risks currently outweigh the potential rewards. It is safer to look for better opportunities elsewhere.";
+            }
+            // 2. WAIT Logic (Deteriorating)
+            else if (effTrajectory === 'Deteriorating') {
+                action = "WAIT";
+                summary = "While the company has history, recent performance suggests a slowdown in business momentum. Fundamental trends are cooling off, which requires patience. It is best to watch from the sidelines until growth stabilizes.";
+            }
+            // 3. BUY NOW Logic (The Perfect Setup)
+            else if (conviction === 'Strong' && effTrajectory === 'Improving' && timing === 'Favourable') {
+                action = "BUY NOW";
+                summary = "The company is showing high quality and accelerating business performance. Market trends are also aligning with these strong fundamentals. This offers a prime opportunity to enter or add aggressively.";
+            }
+            // 4. SIP ONLY Logic (Quality but bad timing or flat growth)
+            else if (conviction === 'Strong') {
+                action = "SIP ONLY";
+                summary = "This is a high-quality asset, though immediate momentum is not yet perfectly aligned. The long-term story remains intact despite short-term market noise. Accumulating slowly allows you to build a position without timing risk.";
+            }
+            // 5. Stable Logic
+            else if (conviction === 'Stable') {
+                if (timing === 'Unfavourable') {
+                    action = "WAIT";
+                    summary = "The business is stable, but the price is currently under pressure. There is no urgency to buy as the trend is negative. Wait for the selling pressure to subside before acting.";
+                } else {
+                    action = "SIP ONLY";
+                    summary = "The asset demonstrates acceptable stability without being exceptional. Current trends support a moderate allocation strategy. Regular, small investments are the best way to handle this steady performer.";
+                }
+            }
+
+            return { action, summary };
+        }
+
+        function getDecisionBlock(decision) {
+            const colors = {
+                'BUY NOW': 'bg-green-50 border-green-200 text-green-800',
+                'SIP ONLY': 'bg-blue-50 border-blue-200 text-blue-800',
+                'WAIT': 'bg-orange-50 border-orange-200 text-orange-800',
+                'AVOID': 'bg-red-50 border-red-200 text-red-800'
+            };
+            const colorClass = colors[decision.action] || 'bg-gray-50 border-gray-200';
+            
+            return `
+                <div class="mt-3 pt-3 border-t border-dashed border-gray-200">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Final Verdict</span>
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded border ${colorClass}">${decision.action}</span>
+                    </div>
+                    <p class="text-[10px] text-gray-500 italic leading-relaxed">"${decision.summary}"</p>
+                </div>
+            `;
+        }
+
+        // --- EXTENSION MODULE: ENTRY-EXIT EXECUTION LAYER (Moreshwar Sir’s Convention) ---
+        function calculateMoreshwarLevels(price, fScore, pScore, isHolding) {
+            // Conviction score X
+            const scoreSum = pScore ? (fScore.total + pScore.total) : fScore.total;
+            const count = pScore ? 2 : 1;
+            const X = Math.round(scoreSum / count); // Keep score generic logic consistent
+            
+            // Current Price Y
+            const Y = price;
+
+            let result = { target: null, sl: null, entry: null };
+
+            if (isHolding) {
+                // For Portfolio Holdings
+                // Target = Y + X
+                // Stop-loss = 100 - X
+                result.target = Y + X;
+                result.sl = 100 - X;
+            } else {
+                // For Watchlist (Pre-Entry)
+                // Entry level = 100 - X
+                result.entry = 100 - X;
+            }
+            return result;
+        }
+
+        function getMoreshwarBlock(price, fScore, pScore, isHolding, decisionAction) {
+            // Activation Rule: Only if BUY NOW or SIP ONLY
+            if (decisionAction !== 'BUY NOW' && decisionAction !== 'SIP ONLY') return '';
+
+            const levels = calculateMoreshwarLevels(price, fScore, pScore, isHolding);
+            
+            // Render logic
+            let html = `<div class="mt-2 pt-2 border-t border-gray-100 flex justify-between items-center text-[10px] font-mono text-gray-600 bg-gray-50/50 p-2 rounded">`;
+            
+            if (isHolding) {
+                html += `
+                    <div class="flex flex-col">
+                        <span class="text-[8px] text-gray-400 uppercase">Target (Y+X)</span>
+                        <span class="font-bold text-green-600">₹${levels.target.toLocaleString()}</span>
+                    </div>
+                    <div class="flex flex-col text-right">
+                        <span class="text-[8px] text-gray-400 uppercase">Stop-loss (100-X)</span>
+                        <span class="font-bold text-red-600">${levels.sl.toLocaleString()}</span>
+                    </div>
+                `;
+            } else {
+                html += `
+                    <div class="flex flex-col w-full text-center">
+                        <span class="text-[8px] text-gray-400 uppercase">Entry Level (100-X)</span>
+                        <span class="font-bold text-blue-600">${levels.entry.toLocaleString()}</span>
+                    </div>
+                `;
+            }
+            html += `</div>`;
+            return html;
         }
     </script>
 </body>
