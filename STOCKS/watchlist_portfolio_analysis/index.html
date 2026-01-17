@@ -56,7 +56,7 @@
         .score-bar-bg { background-color: #e5e7eb; height: 6px; border-radius: 3px; overflow: hidden; }
         .score-bar-fill { height: 100%; border-radius: 3px; }
         
-        /* New Toggle Styles */
+        /* Analysis Tabs */
         .analysis-tab { font-size: 10px; padding: 2px 8px; border-radius: 12px; cursor: pointer; transition: all 0.2s; border: 1px solid transparent; }
         .analysis-tab.active-fund { background: #fee2e2; color: #800000; border-color: #fecaca; font-weight: 600; }
         .analysis-tab.active-port { background: #dbeafe; color: #1e40af; border-color: #bfdbfe; font-weight: 600; }
@@ -205,7 +205,7 @@
         let portfolio = {}; 
         let livePrices = {}; 
         let stockAnalysis = {}; 
-        let cardViews = {}; // Stores toggle state per symbol 'fundamental' | 'porter'
+        let cardViews = {}; 
         let activeTab = 'portfolio';
         let saveTimeout = null;
         let isOfflineMode = false;
@@ -260,12 +260,11 @@
             };
         }
 
-        // --- SCORING ENGINE 1: FUNDAMENTAL (Stocks & Funds) ---
+        // --- SCORING ENGINE 1: FUNDAMENTAL ---
         function calculateFundamentalScore(data) {
             let scores = { business: 0, moat: 0, management: 0, risk: 0, total: 0, explanation: "" };
             let reasons = [];
             
-            // --- ETF / FUND SCORING ---
             if (data.type === 'FUND' || data.type === 'ETF') {
                 const ret1y = data.returns?.r1y || 0;
                 const ret3y = data.returns?.r3y || 0;
@@ -273,26 +272,24 @@
                 const price = data.price || 0;
                 const high52 = data.technicals?.high52 || price;
                 
-                // 1. MF (History Available)
                 if (data.type === 'FUND' || (data.source !== 'Google' && ret1y !== 0)) {
                      let totalScore = 0;
                      if (ret1y > 15) totalScore += 40; else if (ret1y > 10) totalScore += 30; else if (ret1y > 0) totalScore += 15;
                      if (ret3y > 12) totalScore += 30; else if (ret3y > 8) totalScore += 20; else if (ret3y > 0) totalScore += 10;
                      if (ret5y > 10) totalScore += 30; else if (ret5y > 8) totalScore += 20; else if (ret5y > 0) totalScore += 10;
                      
-                     scores.total = Math.min(99, totalScore); // Cap at 99
+                     scores.total = Math.min(99, totalScore);
                      scores.business = Math.min(40, Math.round(totalScore * 0.4));
                      scores.moat = Math.min(20, Math.round(totalScore * 0.3));
                      scores.management = Math.min(20, Math.round(totalScore * 0.2));
                      scores.risk = ret1y > ret3y ? 20 : 10;
                      scores.explanation = "Based on Returns";
                 } 
-                // 2. ETF (Trend Only)
                 else if (high52 > 0) {
                     const low52 = data.technicals?.low52 || (high52 * 0.7); 
                     const range = high52 - low52;
                     const position = ((price - low52) / range) * 100;
-                    scores.total = Math.min(99, Math.round(20 + (position * 0.7))); // Cap at 99
+                    scores.total = Math.min(99, Math.round(20 + (position * 0.7))); 
                     scores.business = Math.round(scores.total * 0.4);
                     scores.moat = Math.round(scores.total * 0.2);
                     scores.management = Math.round(scores.total * 0.2);
@@ -302,7 +299,6 @@
                      return null;
                 }
             } 
-            // --- STOCK SCORING ---
             else {
                 const roe = data.roe || 0;
                 const roce = data.roce || 0; 
@@ -316,14 +312,12 @@
 
                 const isFinancial = (roce < 12 && roe > 15) || (data.name && (data.name.toUpperCase().includes("FINANCE") || data.name.toUpperCase().includes("BANK") || data.name.toUpperCase().includes("CAPITAL")));
                 
-                // 1. Business Strength
                 if (salesGrowth > 15) scores.business += 15; else if (salesGrowth > 8) scores.business += 10; else if (salesGrowth > 0) scores.business += 5;
                 if (profitGrowth > 15) scores.business += 15; else if (profitGrowth > 8) scores.business += 10; else if (profitGrowth > 0) scores.business += 5;
                 if (isFinancial) { if (roe > 15) scores.business += 10; else if (roe > 10) scores.business += 5; }
                 else { if (opm > 20) scores.business += 10; else if (opm > 12) scores.business += 5; }
                 scores.business = Math.min(40, scores.business);
 
-                // 2. Moat
                 if (isFinancial) { if (roe > 18) scores.moat += 8; else if (roe > 12) scores.moat += 5; }
                 else { if (opm > 18) scores.moat += 5; if (roce > 20) scores.moat += 5; }
                 if (mcap > 20000) scores.moat += 5; else if (mcap > 5000) scores.moat += 3;
@@ -331,7 +325,6 @@
                 if (ret1y > 40) scores.moat = Math.max(scores.moat + 5, 18);
                 scores.moat = Math.min(20, scores.moat);
 
-                // 3. Management
                 if (pe > 0) {
                     if (pe < 15 && (profitGrowth > 10 || roe > 15)) scores.management += 20; 
                     else if (pe < 25) scores.management += 10;
@@ -339,25 +332,23 @@
                 }
                 scores.management = Math.min(20, scores.management);
 
-                // 4. Risk
                 if (mcap > 5000) scores.risk += 10; else if (mcap > 2000) scores.risk += 5;
                 if (ret1y > 40) scores.risk += 10; else { if (beta < 1.1) scores.risk += 10; else if (beta < 1.3) scores.risk += 5; }
                 scores.risk = Math.min(20, scores.risk);
 
                 scores.total = scores.business + scores.moat + scores.management + scores.risk;
 
-                // MAGIC BOOST
                 if (pe < 15 && roe > 15 && profitGrowth > 0) { scores.total += 15; reasons.push("High Quality Value"); }
                 else if (pe < 12 && profitGrowth > 10) { scores.total += 10; reasons.push("Deep Value"); }
 
-                scores.total = Math.min(99, scores.total); // Cap at 99
+                scores.total = Math.min(99, scores.total); 
                 if (reasons.length > 0) scores.explanation = reasons.slice(0, 2).join(" & ");
                 else scores.explanation = scores.total > 50 ? "Stable" : "Weak";
             }
             return scores;
         }
 
-        // --- SCORING ENGINE 2: PORTER'S 5 FORCES (Stocks Only) ---
+        // --- SCORING ENGINE 2: PORTER'S 5 FORCES ---
         function calculatePortersScore(data) {
             if (data.type !== 'STOCK') return null;
 
@@ -368,51 +359,34 @@
             const opm = data.opm || 0;
             const mcap = data.mcap || 0;
 
-            let pScore = { 
-                entrants: 0, 
-                suppliers: 0, 
-                buyers: 0, 
-                substitutes: 0, 
-                rivalry: 0, 
-                total: 0 
-            };
+            let pScore = { entrants: 0, suppliers: 0, buyers: 0, substitutes: 0, rivalry: 0, total: 0 };
 
-            // 1. Threat of New Entrants (Barriers to Entry) - Max 20
-            // High Capital (Mcap) & High Efficiency (ROCE) creates barriers
             if (mcap > 10000 && roce > 20) pScore.entrants = 20;
             else if (mcap > 5000 && roce > 15) pScore.entrants = 15;
             else if (mcap > 2000) pScore.entrants = 10;
             else pScore.entrants = 5;
 
-            // 2. Bargaining Power of Suppliers - Max 20
-            // High Margins imply suppliers don't control the business
             if (opm > 25) pScore.suppliers = 20;
             else if (opm > 18) pScore.suppliers = 15;
             else if (opm > 10) pScore.suppliers = 10;
             else pScore.suppliers = 5;
 
-            // 3. Bargaining Power of Buyers - Max 20
-            // High ROE implies pricing power (Brand)
             if (roe > 22) pScore.buyers = 20;
             else if (roe > 16) pScore.buyers = 15;
             else if (roe > 12) pScore.buyers = 10;
             else pScore.buyers = 5;
 
-            // 4. Threat of Substitutes - Max 20
-            // High Sales Growth implies the product is in demand/irreplaceable
             if (salesGrowth > 15) pScore.substitutes = 20;
             else if (salesGrowth > 10) pScore.substitutes = 15;
             else if (salesGrowth > 5) pScore.substitutes = 10;
             else pScore.substitutes = 5;
 
-            // 5. Competitive Rivalry - Max 20
-            // Consistent Profit Growth implies manageable competition
             if (profitGrowth > 15) pScore.rivalry = 20;
             else if (profitGrowth > 10) pScore.rivalry = 15;
             else if (profitGrowth > 0) pScore.rivalry = 10;
             else pScore.rivalry = 5;
 
-            pScore.total = Math.min(99, pScore.entrants + pScore.suppliers + pScore.buyers + pScore.substitutes + pScore.rivalry); // Cap at 99
+            pScore.total = Math.min(99, pScore.entrants + pScore.suppliers + pScore.buyers + pScore.substitutes + pScore.rivalry);
             return pScore;
         }
 
@@ -420,17 +394,13 @@
         function saveState(pushToCloud = true) {
             const state = { portfolio: portfolio, analysis: stockAnalysis, activeTab: activeTab, cardViews: cardViews };
             localStorage.setItem('stockSightData', JSON.stringify(state));
-            
-            // Update UI components
             calculateTotals();
             updateViewCounts();
-            // Only update summary if active tab is summary to save resources
             if (activeTab === 'summary') renderSignalSummary();
 
             if (!pushToCloud) return;
 
             updateCloudStatus('loading', 'Saving...');
-            
             if (saveTimeout) clearTimeout(saveTimeout);
             
             saveTimeout = setTimeout(async () => {
@@ -442,17 +412,13 @@
                         credentials: 'omit',
                         headers: { "Content-Type": "text/plain" } 
                     });
-                    
                     const json = await res.json();
-                    
                     if (json.status === 'success') {
                         updateCloudStatus('success', 'Saved');
                     } else {
                         throw new Error(json.message || "Script returned error");
                     }
-
                 } catch (e) {
-                    // Fallback to Blind POST
                     try {
                         await fetch(SHEET_API_URL, {
                             method: 'POST',
@@ -469,9 +435,8 @@
             }, 2000); 
         }
 
-        // --- INIT & PERSISTENCE ---
+        // --- INIT ---
         async function initApp() {
-            // 1. Load from Local Storage IMMEDIATELY
             const robustData = localStorage.getItem('stockSightData');
             if (robustData) {
                 const state = JSON.parse(robustData);
@@ -480,34 +445,19 @@
                 activeTab = state.activeTab || 'portfolio';
                 cardViews = state.cardViews || {};
                 
-                // --- MIGRATION: CLEAN OLD .NS / .BO KEYS ---
                 let migrationNeeded = false;
                 Object.keys(portfolio).forEach(key => {
                     const clean = cleanTicker(key);
                     if (clean !== key) {
                         migrationNeeded = true;
-                        // Move Portfolio Data
                         portfolio[clean] = portfolio[key];
                         delete portfolio[key];
-                        
-                        // Move Analysis Data
-                        if (stockAnalysis[key]) {
-                            stockAnalysis[clean] = stockAnalysis[key];
-                            delete stockAnalysis[key];
-                        }
-                        
-                        // Move View State
-                        if (cardViews[key]) {
-                            cardViews[clean] = cardViews[key];
-                            delete cardViews[key];
-                        }
+                        if (stockAnalysis[key]) { stockAnalysis[clean] = stockAnalysis[key]; delete stockAnalysis[key]; }
+                        if (cardViews[key]) { cardViews[clean] = cardViews[key]; delete cardViews[key]; }
                     }
                 });
                 
-                if (migrationNeeded) {
-                    console.log("Migrated legacy tickers");
-                    saveState(false);
-                }
+                if (migrationNeeded) saveState(false);
 
                 Object.keys(stockAnalysis).forEach(sym => {
                     if(stockAnalysis[sym].price) livePrices[sym] = stockAnalysis[sym].price;
@@ -520,27 +470,21 @@
                 document.getElementById('empty-watchlist').innerHTML = "Initializing...";
             }
 
-            // 2. Cloud Sync Attempt
             await performCloudSync();
 
-            // 3. Start Live Price Fetch
             const symbols = Object.keys(portfolio);
             if (symbols.length > 0) {
-                setTimeout(() => {
-                    symbols.forEach(sym => fetchAsset(sym));
-                }, 100);
+                setTimeout(() => { symbols.forEach(sym => fetchAsset(sym)); }, 100);
             }
         }
 
         async function performCloudSync() {
             updateCloudStatus('loading', 'Syncing...');
             isOfflineMode = false;
-
             try {
                 const response = await fetch(SHEET_API_URL, { method: 'GET', credentials: 'omit' });
                 if (!response.ok) throw new Error("HTTP " + response.status);
                 const cloudData = await response.json();
-                
                 if (cloudData.status === 'error') throw new Error(cloudData.message);
 
                 if (cloudData && Object.keys(cloudData).length > 0) {
@@ -555,29 +499,20 @@
                 isOfflineMode = true;
                 updateCloudStatus('error', 'Offline');
                 document.getElementById('main-empty-state').classList.add('hidden');
-                if (Object.keys(portfolio).length === 0) {
-                     document.getElementById('empty-watchlist').innerHTML = "Offline Mode.<br>Add stocks locally.";
-                }
+                if (Object.keys(portfolio).length === 0) document.getElementById('empty-watchlist').innerHTML = "Offline Mode.<br>Add stocks locally.";
             }
         }
 
-        function forceSync() {
-            sessionStorage.removeItem('syncErrorShown'); 
-            performCloudSync();
-        }
+        function forceSync() { sessionStorage.removeItem('syncErrorShown'); performCloudSync(); }
 
         function renderUI() {
             const symbols = Object.keys(portfolio);
             if (symbols.length > 0) {
                 document.getElementById('empty-watchlist').classList.add('hidden');
                 document.getElementById('main-empty-state').classList.add('hidden');
-                
                 symbols.forEach(sym => {
-                    if (stockAnalysis[sym]) {
-                        renderCard(sym, stockAnalysis[sym], true); 
-                    } else {
-                        createCardSkeleton(sym);
-                    }
+                    if (stockAnalysis[sym]) renderCard(sym, stockAnalysis[sym], true); 
+                    else createCardSkeleton(sym);
                     renderWatchlistItem(sym, !stockAnalysis[sym]);
                 });
             }
@@ -619,11 +554,9 @@
             activeRequests++;
             updateReqCount();
             const sym = input.toUpperCase();
-            
             try {
                 if (/^\d{5,6}$/.test(sym)) await fetchMutualFund(sym);
                 else await fetchStockOrETF(sym);
-                
                 const card = document.getElementById(`card-${sym}`);
                 if(card) card.classList.remove('updating');
             } catch(e) {
@@ -652,8 +585,6 @@
 
         async function fetchStockOrETF(sym, betaPromise) {
             const isLikelyETF = ETF_KEYWORDS.some(k => sym.includes(k));
-            
-            // 1. Screener (STOCKS ONLY)
             if (!isLikelyETF) {
                 try {
                     const html = await fetchWithFallback(`https://www.screener.in/company/${sym}/consolidated/`);
@@ -672,27 +603,23 @@
                             let growth = 0;
                             let opm = getVal('OPM %') || 0; 
                             let profitGrowth = 0;
-
                             const idxSales = html.indexOf("Compounded Sales Growth");
                             if(idxSales > -1) {
                                 const sub = html.substring(idxSales, idxSales+1500);
                                 let m = sub.match(/3 Years:[\s\S]*?([0-9\.-]+)\s?%/i);
                                 growth = m ? parseFloat(m[1]) : 0;
                             }
-
                             const idxProfit = html.indexOf("Compounded Profit Growth");
                             if(idxProfit > -1) {
                                 const sub = html.substring(idxProfit, idxProfit+1500);
                                 let m = sub.match(/3 Years:[\s\S]*?([0-9\.-]+)\s?%/i);
                                 profitGrowth = m ? parseFloat(m[1]) : 0;
                             }
-
                             let extraData = {};
                             try {
                                 const yData = await fetchYahooQuote(`${sym}.NS`);
                                 if(yData) extraData = { beta: yData.beta, returns: yData.returns };
                             } catch(e) {}
-
                             const data = { 
                                 name: doc.querySelector('h1')?.innerText || sym, 
                                 price: price, 
@@ -714,8 +641,6 @@
                     }
                 } catch (e) {}
             }
-
-            // 2. Yahoo (Last Resort)
             try {
                 let targetSym = sym.endsWith('.NS') || sym.endsWith('.BO') ? sym : `${sym}.NS`;
                 let data = await fetchYahooQuote(targetSym);
@@ -726,7 +651,6 @@
                     return;
                 }
             } catch (yErr) {}
-
             try {
                 const gData = await fetchGoogleFinance(sym);
                 if (gData) {
@@ -735,7 +659,6 @@
                     return;
                 }
             } catch (gErr) {}
-
             throw new Error("Asset not found");
         }
 
@@ -757,10 +680,8 @@
                         const years = months/12;
                         return ((Math.pow(curr/old, 1/years) - 1) * 100);
                     };
-
                     const rawName = meta.symbol || yahooSym;
                     const cleanName = rawName.replace('.NS', '').replace('.BO', '');
-
                     return { 
                         name: cleanName, 
                         price: meta.regularMarketPrice, 
@@ -812,7 +733,6 @@
                 } else {
                     high52 = price * 1.05; low52 = price * 0.95; 
                 }
-
                 return { 
                     name: nameMatch ? nameMatch[1] : sym, 
                     price: price, 
@@ -828,7 +748,8 @@
         // --- RENDERING ---
         function renderCard(sym, data, isCached = false) {
             const qty = portfolio[sym].qty || 0;
-            const targetContainerId = qty > 0 ? 'view-portfolio' : 'view-watchlist';
+            const isHeld = qty > 0;
+            const targetContainerId = isHeld ? 'view-portfolio' : 'view-watchlist';
             const container = document.getElementById(targetContainerId);
             
             let card = document.getElementById(`card-${sym}`);
@@ -847,27 +768,48 @@
             // Calculate Scores
             const fScore = calculateFundamentalScore(data);
             const pScore = calculatePortersScore(data);
-            const viewMode = cardViews[sym] || 'fundamental'; // Default view
+            const tScore = calculateTrajectoryScore(data);
+            const rsScore = calculateRelativeStrength(data);
+            
+            // Boost & Normalize Logic
+            if (fScore) {
+                let rawTotal = fScore.total + tScore + rsScore;
+                
+                if (data.type === 'ETF' || data.type === 'FUND') {
+                     // Apply Normalization Engine ONLY for ETFs/Funds (Logarithmic curve)
+                     fScore.total = calculateNormalizedScore(rawTotal);
+                } else {
+                     // Stocks: Simple cap at 99 (Linear)
+                     fScore.total = Math.max(0, Math.min(99, rawTotal));
+                }
+            }
+
+            const viewMode = cardViews[sym] || 'fundamental';
             let longTermLabel = "";
             
-            // Extension: Fundamental Conviction
             const conviction = calculateConviction(fScore, pScore);
             const convictionBadge = getConvictionBadge(conviction);
-
-            // Extension: Business Trajectory
             const trajectory = calculateTrajectory(data);
             const trajectoryBadge = getTrajectoryBadge(trajectory);
-
-            // Extension: Timing Engine
             const timing = calculateTiming(data);
             const timingBadge = getTimingBadge(timing);
+            const fundTiming = calculateFundamentalTiming(data);
+            const fundTimingBadge = getFundamentalTimingBadge(fundTiming);
 
-            // Extension: Final Decision Synthesizer
-            const decision = calculateFinalDecision(conviction, trajectory, timing, data.type);
-            const decisionBlock = getDecisionBlock(decision);
+            // NEW EXTENSION: Confidence Gate
+            const confidence = calculateDataConfidence(data);
 
-            // NEW EXTENSION: Entry-Exit Execution Layer (Moreshwar Sir’s Convention)
-            const moreshwarBlock = getMoreshwarBlock(data.price, fScore, pScore, qty > 0, decision.action);
+            const decision = calculateFinalDecision(conviction, trajectory, timing, data.type, isHeld);
+            if (fScore) {
+                decision.summary = calculateScoreActionMapper(fScore.total, fundTiming, conviction, isHeld);
+            }
+            
+            // Pass confidence to decision block
+            const decisionBlock = getDecisionBlock(decision, confidence);
+            const moreshwarBlock = getMoreshwarBlock(data.price, fScore, pScore, isHeld, decision.action);
+
+            const rsColor = rsScore > 0 ? 'text-green-600' : (rsScore < 0 ? 'text-red-600' : 'text-gray-400');
+            const rsSign = rsScore > 0 ? '+' : '';
 
             if(data.type === 'STOCK' && fScore) {
                 typeBadge = "badge-stock";
@@ -875,17 +817,15 @@
                 if (fScore.total >= 65) { signal = "BUY"; sigClass = "signal-buy"; }
                 else if (fScore.total <= 40) { signal = "SELL"; sigClass = "signal-sell"; }
 
-                // Check for Long Term Potential (Porter > Fundamental)
                 if (pScore && pScore.total > fScore.total) {
                     longTermLabel = `<div class="text-[8px] font-semibold bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded border border-purple-200 mt-1 text-right">Long Term Potential</div>`;
                 }
 
-                if (qty === 0) {
+                if (!isHeld) {
                     if (signal === "HOLD") signal = "WAIT";
                     if (signal === "SELL") { signal = "AVOID"; sigClass = "signal-gray"; }
                 }
 
-                // Explicit Tabs
                 const tabHTML = `
                     <div class="flex gap-2 mb-3 mt-1">
                         <button onclick="switchCardTab('${sym}', 'fundamental')" class="analysis-tab ${viewMode === 'fundamental' ? 'active-fund' : 'inactive'}">Fundamental</button>
@@ -894,7 +834,6 @@
                 `;
 
                 if (viewMode === 'fundamental') {
-                    // FUNDAMENTAL VIEW
                     metricsHTML = `
                         ${tabHTML}
                         <div class="space-y-3 animate-fade-in">
@@ -909,12 +848,13 @@
                                 <div class="bg-gray-50 p-1.5 rounded"><span class="text-gray-400 block">Moat</span><span class="font-bold text-gray-700">${fScore.moat}/20</span></div>
                                 <div class="bg-gray-50 p-1.5 rounded"><span class="text-gray-400 block">Mgmt</span><span class="font-bold text-gray-700">${fScore.management}/20</span></div>
                                 <div class="bg-gray-50 p-1.5 rounded"><span class="text-gray-400 block">Risk</span><span class="font-bold text-gray-700">${fScore.risk}/20</span></div>
+                                <div class="bg-indigo-50 p-1.5 rounded"><span class="text-gray-400 block">Trajectory</span><span class="font-bold text-indigo-700">+${tScore}</span></div>
+                                <div class="bg-gray-50 p-1.5 rounded"><span class="text-gray-400 block">Rel Strength</span><span class="font-bold ${rsColor}">${rsSign}${rsScore}</span></div>
                             </div>
                             ${decisionBlock}
                             ${moreshwarBlock}
                         </div>`;
                 } else if (viewMode === 'porter') {
-                    // PORTER'S VIEW
                     metricsHTML = `
                         ${tabHTML}
                         <div class="space-y-3 animate-fade-in">
@@ -996,6 +936,7 @@
                                 <span class="text-[10px] font-mono text-gray-500 bg-gray-100 px-1 rounded">${cleanSym}</span>
                                 <span class="text-[10px] px-1 rounded font-bold ${typeBadge}">${data.type}</span>
                                 ${convictionBadge}
+                                ${fundTimingBadge}
                                 ${trajectoryBadge}
                                 ${timingBadge}
                                 ${sourceTag}
@@ -1037,9 +978,8 @@
         window.switchCardTab = function(sym, mode) {
             cardViews[sym] = mode;
             if (stockAnalysis[sym]) {
-                // Re-render card with new view state
-                renderCard(sym, stockAnalysis[sym], false); // Fixed: Pass false to prevent adding .updating class (locks UI)
-                saveState(false); // Save UI state locally
+                renderCard(sym, stockAnalysis[sym], false); 
+                saveState(false); 
             }
         }
 
@@ -1104,7 +1044,7 @@
             document.getElementById('empty-watchlist').classList.add('hidden');
             document.getElementById('main-empty-state').classList.add('hidden');
             symbols.forEach(rawSym => {
-                const sym = cleanTicker(rawSym); // Clean key (removes .NS etc)
+                const sym = cleanTicker(rawSym); 
                 if(portfolio[sym]) return;
                 portfolio[sym] = { qty: 0, avg: 0 };
                 switchTab('watchlist'); 
@@ -1203,18 +1143,15 @@
             document.getElementById('watchlist-empty').style.display = watchCount === 0 ? 'flex' : 'none';
         }
 
-        // --- EXTENSION MODULE: FUNDAMENTAL CONVICTION ---
+        // --- EXTENSIONS ---
+        
         function calculateConviction(fScore, pScore) {
-            // Logic for Stocks with Porter's data
             if (pScore) {
-                // Combined strength: Average of Fundamental (Internal) and Porter's (External)
                 const avg = (fScore.total + pScore.total) / 2;
                 if (avg >= 60) return "Strong";
                 if (avg <= 40) return "Weak";
                 return "Stable";
             }
-            
-            // Logic for Funds/ETFs (Fundamental only)
             if (fScore.total >= 65) return "Strong";
             if (fScore.total <= 40) return "Weak";
             return "Stable";
@@ -1222,212 +1159,228 @@
 
         function getConvictionBadge(label) {
             if (!label) return '';
-            const styles = {
-                'Strong': 'bg-emerald-100 text-emerald-800 border-emerald-200',
-                'Stable': 'bg-amber-100 text-amber-800 border-amber-200',
-                'Weak': 'bg-rose-100 text-rose-800 border-rose-200'
-            };
+            const styles = { 'Strong': 'bg-emerald-100 text-emerald-800 border-emerald-200', 'Stable': 'bg-amber-100 text-amber-800 border-amber-200', 'Weak': 'bg-rose-100 text-rose-800 border-rose-200' };
             return `<span class="text-[9px] font-bold px-1.5 py-0.5 rounded border ${styles[label]} uppercase tracking-wider mx-1">${label}</span>`;
         }
 
-        // --- EXTENSION MODULE: BUSINESS TRAJECTORY ---
         function calculateTrajectory(data) {
             if (data.type !== 'STOCK') return null;
-            
-            const sales = data.growth || 0;
-            const profit = data.profitGrowth || 0;
-            const roe = data.roe || 0;
-
-            // Red Flags
+            const sales = data.growth || 0; const profit = data.profitGrowth || 0; const roe = data.roe || 0;
             if (sales < 0 || profit < 0) return "Deteriorating";
-            if (profit < 5 && sales < 5) return "Deteriorating"; // Stagnation
-
-            // Green Flags
-            // 1. Operating Leverage (Margins expanding) + Healthy Growth
+            if (profit < 5 && sales < 5) return "Deteriorating"; 
             if (profit > sales && sales > 5 && profit > 10) return "Improving";
-            
-            // 2. High Performance compounder
             if (roe > 20 && profit > 10) return "Improving";
-
             return "Flat";
         }
 
         function getTrajectoryBadge(label) {
             if (!label) return '';
-            const styles = {
-                'Improving': 'bg-indigo-100 text-indigo-800 border-indigo-200',
-                'Flat': 'bg-gray-100 text-gray-600 border-gray-200',
-                'Deteriorating': 'bg-orange-100 text-orange-800 border-orange-200'
-            };
+            const styles = { 'Improving': 'bg-indigo-100 text-indigo-800 border-indigo-200', 'Flat': 'bg-gray-100 text-gray-600 border-gray-200', 'Deteriorating': 'bg-orange-100 text-orange-800 border-orange-200' };
             return `<span class="text-[9px] font-bold px-1.5 py-0.5 rounded border ${styles[label]} uppercase tracking-wider mx-1">${label}</span>`;
         }
 
-        // --- EXTENSION MODULE: TIMING ENGINE (Lightweight/Binary) ---
         function calculateTiming(data) {
-            const price = data.price || 0;
-            const r1y = data.returns?.r1y || 0;
-            const r3y = data.returns?.r3y || 0;
-            const ma200 = data.technicals?.ma200 || 0; // Available for ETFs, sometimes missing for Stocks
-
-            // 1. Determine Trend Direction
+            const price = data.price || 0; const r1y = data.returns?.r1y || 0; const r3y = data.returns?.r3y || 0; const ma200 = data.technicals?.ma200 || 0;
             let trend = 'Neutral';
-            if (ma200 > 0) {
-                // If we have MA200 (Technically rigorous)
-                trend = price > ma200 ? 'Up' : 'Down';
-            } else {
-                // Fallback: Use 1Y Return sign (Simple momentum)
-                if (r1y > 10) trend = 'Up';
-                else if (r1y < -5) trend = 'Down';
-            }
-
-            // 2. Determine Momentum Status (Derivative)
-            // Is the trend accelerating or decelerating?
+            if (ma200 > 0) trend = price > ma200 ? 'Up' : 'Down';
+            else { if (r1y > 10) trend = 'Up'; else if (r1y < -5) trend = 'Down'; }
             let momentum = 'Stable';
-            if (r1y > r3y + 5) momentum = 'Improving'; // 1Y performance beating 3Y avg
-            else if (r1y < r3y - 5) momentum = 'Weakening';
-
-            // 3. Synthesis Output
+            if (r1y > r3y + 5) momentum = 'Improving'; else if (r1y < r3y - 5) momentum = 'Weakening';
             if (trend === 'Up' && momentum === 'Improving') return "Favourable";
             if (trend === 'Down' && momentum === 'Weakening') return "Unfavourable";
-            
-            // Mixed Cases
-            if (trend === 'Up' && momentum === 'Weakening') return "Neutral"; // Up but losing steam
-            if (trend === 'Down' && momentum === 'Improving') return "Neutral"; // Down but recovering
-            
-            // Default flat/stable
+            if (trend === 'Up' && momentum === 'Weakening') return "Neutral";
+            if (trend === 'Down' && momentum === 'Improving') return "Neutral";
             if (r1y > 0) return "Neutral";
             return "Unfavourable";
         }
 
         function getTimingBadge(label) {
             if (!label) return '';
-            const styles = {
-                'Favourable': 'bg-teal-100 text-teal-800 border-teal-200',
-                'Neutral': 'bg-slate-100 text-slate-600 border-slate-200',
-                'Unfavourable': 'bg-red-100 text-red-800 border-red-200'
-            };
+            const styles = { 'Favourable': 'bg-teal-100 text-teal-800 border-teal-200', 'Neutral': 'bg-slate-100 text-slate-600 border-slate-200', 'Unfavourable': 'bg-red-100 text-red-800 border-red-200' };
             return `<span class="text-[9px] font-bold px-1.5 py-0.5 rounded border ${styles[label]} uppercase tracking-wider mx-1">TIMING: ${label}</span>`;
         }
 
-        // --- EXTENSION MODULE: FINAL DECISION SYNTHESIZER ---
-        function calculateFinalDecision(conviction, trajectory, timing, type) {
-            let action = "WAIT";
-            let summary = "";
+        function calculateFundamentalTiming(data) {
+            if (data.type !== 'STOCK') return null;
+            const profitGrowth = data.profitGrowth || 0; const pe = data.pe || 0; const r1y = data.returns?.r1y || 0;
+            if (r1y > 100 || (pe > 60 && profitGrowth < 10) || profitGrowth < 0) return "Late";
+            if ((profitGrowth > 15 && r1y < 5) || (pe > 0 && pe < 15 && profitGrowth > 5)) return "Early";
+            if (profitGrowth > 5 && r1y >= 5 && r1y <= 80) return "Optimal";
+            return r1y > 0 ? "Optimal" : "Early";
+        }
 
-            // Handle ETF/Funds slightly differently (Trajectory might be null)
+        function getFundamentalTimingBadge(label) {
+            if (!label) return '';
+            const styles = { 'Early': 'bg-sky-100 text-sky-800 border-sky-200', 'Optimal': 'bg-lime-100 text-lime-800 border-lime-200', 'Late': 'bg-red-50 text-red-600 border-red-200' };
+            return `<span class="text-[9px] font-bold px-1.5 py-0.5 rounded border ${styles[label]} uppercase tracking-wider mx-1">${label}</span>`;
+        }
+
+        function calculateTrajectoryScore(data) {
+            if (data.type !== 'STOCK') return 0;
+            const sales3Y = data.growth || 0; const profit3Y = data.profitGrowth || 0; const roe = data.roe || 0; const roce = data.roce || 0; const r3y = data.returns?.r3y || 0; const r5y = data.returns?.r5y || 0;
+            let score = 0;
+            if (sales3Y > 10 && profit3Y > 10) score += 5;
+            if (profit3Y > sales3Y && sales3Y > 0) score += 5;
+            if (roe > 15 && roce > 15) score += 5;
+            if (r3y > 12 && r5y > 12) score += 5;
+            return score;
+        }
+
+        function calculateRelativeStrength(data) {
+            if (data.type !== 'STOCK') return 0;
+            const roe = data.roe || 0; const roce = data.roce || 0; const profitGrowth = data.profitGrowth || 0; const opm = data.opm || 0; const name = data.name || "";
+            const isFinancial = (roce < 12 && roe > 15) || (name.toUpperCase().includes("FINANCE") || name.toUpperCase().includes("BANK") || name.toUpperCase().includes("CAPITAL"));
+            let medianEfficiency = isFinancial ? 13 : 15; let medianGrowth = isFinancial ? 12 : 10; let medianMargin = isFinancial ? 0 : 14;
+            let score = 0;
+            const efficiencyMetric = isFinancial ? roe : roce;
+            if (efficiencyMetric > medianEfficiency * 1.2) score += 5; else if (efficiencyMetric > medianEfficiency) score += 2; else if (efficiencyMetric < medianEfficiency * 0.8) score -= 5; else score -= 2;
+            if (isFinancial) { if (profitGrowth > medianGrowth * 1.2) score += 5; else if (profitGrowth > medianGrowth) score += 2; else if (profitGrowth < medianGrowth * 0.8) score -= 5; else score -= 2; } 
+            else { let subScore = 0; if (profitGrowth > medianGrowth) subScore += 2.5; else subScore -= 2.5; if (opm > medianMargin) subScore += 2.5; else subScore -= 2.5; score += Math.round(subScore); }
+            return Math.max(-10, Math.min(10, score));
+        }
+
+        function calculateFinalDecision(conviction, trajectory, timing, type, isHeld) {
+            let action = isHeld ? "HOLD" : "WAIT";
+            let summary = "";
             const isFund = type !== 'STOCK';
             const effTrajectory = isFund ? (timing === 'Favourable' ? 'Improving' : 'Flat') : trajectory;
 
-            // 1. AVOID Logic
             if (conviction === 'Weak') {
-                action = "AVOID";
-                summary = "The fundamental quality does not meet the required threshold for investment. The business risks currently outweigh the potential rewards. It is safer to look for better opportunities elsewhere.";
+                if (isHeld) { action = "EXIT"; summary = "Fundamental thesis has deteriorated significantly. Risks outweigh rewards."; } 
+                else { action = "AVOID"; summary = "Quality does not meet the threshold for investment. Look elsewhere."; }
             }
-            // 2. WAIT Logic (Deteriorating)
-            else if (effTrajectory === 'Deteriorating') {
-                action = "WAIT";
-                summary = "While the company has history, recent performance suggests a slowdown in business momentum. Fundamental trends are cooling off, which requires patience. It is best to watch from the sidelines until growth stabilizes.";
-            }
-            // 3. BUY NOW Logic (The Perfect Setup)
-            else if (conviction === 'Strong' && effTrajectory === 'Improving' && timing === 'Favourable') {
-                action = "BUY NOW";
-                summary = "The company is showing high quality and accelerating business performance. Market trends are also aligning with these strong fundamentals. This offers a prime opportunity to enter or add aggressively.";
-            }
-            // 4. SIP ONLY Logic (Quality but bad timing or flat growth)
             else if (conviction === 'Strong') {
-                action = "SIP ONLY";
-                summary = "This is a high-quality asset, though immediate momentum is not yet perfectly aligned. The long-term story remains intact despite short-term market noise. Accumulating slowly allows you to build a position without timing risk.";
-            }
-            // 5. Stable Logic
-            else if (conviction === 'Stable') {
-                if (timing === 'Unfavourable') {
-                    action = "WAIT";
-                    summary = "The business is stable, but the price is currently under pressure. There is no urgency to buy as the trend is negative. Wait for the selling pressure to subside before acting.";
+                if (effTrajectory === 'Deteriorating') {
+                    if (isHeld) { action = "REVIEW"; summary = "Fundamentals are strong but momentum is fading. Watch closely."; } 
+                    else { action = "WAIT"; summary = "Great company, but business momentum is slowing. Wait for stabilization."; }
+                } else if (timing === 'Late') {
+                    if (isHeld) { action = "HOLD"; summary = "Expensive, but quality is high. Ride the trend, but don't add aggressively."; } 
+                    else { action = "WAIT"; summary = "Fundamentals are great, but the price is extended. Wait for a dip."; }
                 } else {
-                    action = "SIP ONLY";
-                    summary = "The asset demonstrates acceptable stability without being exceptional. Current trends support a moderate allocation strategy. Regular, small investments are the best way to handle this steady performer.";
+                    if (isHeld) { action = "ADD"; summary = "Everything aligns: Quality, Growth, and Trend. Good level to increase allocation."; } 
+                    else { action = "BUY NOW"; summary = "Prime setup: High conviction matched with accelerating business performance."; }
                 }
             }
-
+            else { 
+                if (effTrajectory === 'Deteriorating') {
+                    if (isHeld) action = "REDUCE"; else action = "AVOID";
+                    summary = "Business stability is threatened by slowing growth trends.";
+                } else if (timing === 'Unfavourable') {
+                    if (isHeld) { action = "HOLD"; summary = "Price is weak, but business is stable. No urgency to exit yet."; } 
+                    else { action = "WAIT"; summary = "Stable business, but negative price trend. Wait for support."; }
+                } else {
+                    if (isHeld) { action = "HOLD"; summary = "A steady performer. Continue holding for consistent compounding."; } 
+                    else { action = "SIP ONLY"; summary = "Decent stability warrants a small, staggered allocation approach."; }
+                }
+            }
             return { action, summary };
         }
 
-        function getDecisionBlock(decision) {
-            const colors = {
-                'BUY NOW': 'bg-green-50 border-green-200 text-green-800',
-                'SIP ONLY': 'bg-blue-50 border-blue-200 text-blue-800',
-                'WAIT': 'bg-orange-50 border-orange-200 text-orange-800',
-                'AVOID': 'bg-red-50 border-red-200 text-red-800'
-            };
+        function getDecisionBlock(decision, confidence) {
+            const colors = { 'BUY NOW': 'bg-green-50 border-green-200 text-green-800', 'ADD': 'bg-emerald-50 border-emerald-200 text-emerald-800', 'SIP ONLY': 'bg-blue-50 border-blue-200 text-blue-800', 'HOLD': 'bg-indigo-50 border-indigo-200 text-indigo-800', 'WAIT': 'bg-orange-50 border-orange-200 text-orange-800', 'REVIEW': 'bg-yellow-50 border-yellow-200 text-yellow-800', 'REDUCE': 'bg-amber-50 border-amber-200 text-amber-800', 'EXIT': 'bg-red-50 border-red-200 text-red-800', 'AVOID': 'bg-slate-50 border-slate-200 text-slate-600' };
             const colorClass = colors[decision.action] || 'bg-gray-50 border-gray-200';
             
-            return `
-                <div class="mt-3 pt-3 border-t border-dashed border-gray-200">
-                    <div class="flex items-center justify-between mb-1">
+            // Confidence Style
+            const confColors = { 'High': 'text-green-600', 'Medium': 'text-yellow-600', 'Low': 'text-red-600' };
+            const confColor = confColors[confidence] || 'text-gray-400';
+
+            return `<div class="mt-3 pt-3 border-t border-dashed border-gray-200">
+                <div class="flex items-center justify-between mb-1">
+                    <div class="flex items-center gap-2">
                         <span class="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Final Verdict</span>
-                        <span class="text-[10px] font-bold px-2 py-0.5 rounded border ${colorClass}">${decision.action}</span>
+                        <span class="text-[8px] font-mono ${confColor}" title="Data Confidence">(${confidence} Conf.)</span>
                     </div>
-                    <p class="text-[10px] text-gray-500 italic leading-relaxed">"${decision.summary}"</p>
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded border ${colorClass}">${decision.action}</span>
                 </div>
-            `;
+                <p class="text-[10px] text-gray-500 italic leading-relaxed">"${decision.summary}"</p>
+            </div>`;
         }
 
-        // --- EXTENSION MODULE: ENTRY-EXIT EXECUTION LAYER (Moreshwar Sir’s Convention) ---
+        function calculateScoreActionMapper(score, timing, conviction, isHeld) {
+            let strength = "Moderate";
+            if (score >= 65) strength = "Strong"; else if (score <= 40) strength = "Weak";
+            let s1 = `The fundamentals are ${strength.toLowerCase()} and the timing appears ${timing ? timing.toLowerCase() : 'neutral'}.`;
+            let s2 = "", s3 = "";
+            if (strength === "Strong") {
+                if (timing === "Optimal" || timing === "Early") { s2 = "This alignment suggests high conviction with a supportive entry price."; s3 = isHeld ? "Consider adding to this winning position." : "It is a prime setup to deploy capital aggressively."; } 
+                else { s2 = "However, the price has extended far beyond the ideal entry zone."; s3 = isHeld ? "Hold and ride the trend, but avoid fresh aggressive buying." : "Wait for a meaningful correction to improve the safety margin."; }
+            } else if (strength === "Moderate") {
+                if (timing === "Optimal") { s2 = "While not exceptional, the valuation offers a decent safety net."; s3 = isHeld ? "Keep holding, but monitor for better opportunities." : "A small, staggered allocation is appropriate here."; } 
+                else { s2 = "Lacking both superior quality and perfect timing, the edge is thin."; s3 = isHeld ? "Review position size; upsides may be capped." : "It is better to remain on the sidelines for now."; }
+            } else { 
+                s2 = "The core business metrics do not support a long-term investment case."; s3 = "Capital preservation is priority; " + (isHeld ? "plan an exit strategy." : "avoid this counter.");
+            }
+            return `${s1} ${s2} ${s3}`;
+        }
+
         function calculateMoreshwarLevels(price, fScore, pScore, isHolding) {
-            // Conviction score X
             const scoreSum = pScore ? (fScore.total + pScore.total) : fScore.total;
             const count = pScore ? 2 : 1;
-            const X = Math.round(scoreSum / count); // Keep score generic logic consistent
-            
-            // Current Price Y
+            const X = Math.round(scoreSum / count); 
             const Y = price;
-
             let result = { target: null, sl: null, entry: null };
-
-            if (isHolding) {
-                // For Portfolio Holdings
-                // Target = Y + X
-                // Stop-loss = 100 - X
-                result.target = Y + X;
-                result.sl = 100 - X;
-            } else {
-                // For Watchlist (Pre-Entry)
-                // Entry level = 100 - X
-                result.entry = 100 - X;
-            }
+            if (isHolding) { result.target = Y + X; result.sl = Y - (100 - X); } 
+            else { const offset = 100 - X; result.entry = Y - offset; }
             return result;
         }
 
         function getMoreshwarBlock(price, fScore, pScore, isHolding, decisionAction) {
-            // Activation Rule: Only if BUY NOW or SIP ONLY
-            if (decisionAction !== 'BUY NOW' && decisionAction !== 'SIP ONLY') return '';
-
+            const showFor = ['BUY NOW', 'SIP ONLY', 'ADD', 'AVOID', 'WAIT'];
+            if (!isHolding && !showFor.includes(decisionAction)) return '';
             const levels = calculateMoreshwarLevels(price, fScore, pScore, isHolding);
-            
-            // Render logic
             let html = `<div class="mt-2 pt-2 border-t border-gray-100 flex justify-between items-center text-[10px] font-mono text-gray-600 bg-gray-50/50 p-2 rounded">`;
-            
-            if (isHolding) {
-                html += `
-                    <div class="flex flex-col">
-                        <span class="text-[8px] text-gray-400 uppercase">Target (Y+X)</span>
-                        <span class="font-bold text-green-600">₹${levels.target.toLocaleString()}</span>
-                    </div>
-                    <div class="flex flex-col text-right">
-                        <span class="text-[8px] text-gray-400 uppercase">Stop-loss (100-X)</span>
-                        <span class="font-bold text-red-600">${levels.sl.toLocaleString()}</span>
-                    </div>
-                `;
-            } else {
-                html += `
-                    <div class="flex flex-col w-full text-center">
-                        <span class="text-[8px] text-gray-400 uppercase">Entry Level (100-X)</span>
-                        <span class="font-bold text-blue-600">${levels.entry.toLocaleString()}</span>
-                    </div>
-                `;
+            if (isHolding) { html += `<div class="flex flex-col"><span class="text-[8px] text-gray-400 uppercase">Target (Y+X)</span><span class="font-bold text-green-600">₹${levels.target.toLocaleString()}</span></div><div class="flex flex-col text-right"><span class="text-[8px] text-gray-400 uppercase">Stop-loss (Price-Risk)</span><span class="font-bold text-red-600">₹${levels.sl.toLocaleString()}</span></div>`; } 
+            else { 
+                let label = "Entry Price"; let valColor = "text-blue-600";
+                if (decisionAction === 'AVOID' || decisionAction === 'WAIT') { label = "Avoid Till"; valColor = "text-orange-500"; }
+                html += `<div class="flex flex-col w-full text-center"><span class="text-[8px] text-gray-400 uppercase">${label}</span><span class="font-bold ${valColor}">₹${levels.entry.toLocaleString()}</span></div>`; 
             }
             html += `</div>`;
             return html;
+        }
+
+        // --- EXTENSION MODULE: SCORE NORMALIZATION ENGINE ---
+        function calculateNormalizedScore(rawScore) {
+            // Raw score can exceed 100 (e.g. 100 fund + 20 traj + 10 RS = 130)
+            // Logic: Linear up to 60, then logarithmic curve to soft-cap near 99
+            
+            if (rawScore <= 60) return Math.max(0, rawScore);
+            
+            // For inputs > 60, map to 60-99
+            // Formula: 60 + (MaxAdd * (1 - e^(-rate * (raw - 60))))
+            // Using MaxAdd = 39 (to cap at 99), Rate optimized for spread
+            
+            const excess = rawScore - 60;
+            const normalizedExcess = 39 * (1 - Math.exp(-0.035 * excess));
+            
+            return Math.round(60 + normalizedExcess);
+        }
+        
+        function calculateDataConfidence(data) {
+            let score = 3; // 3=High, 2=Medium, 1=Low
+
+            // 1. Data Completeness
+            if (data.type === 'STOCK') {
+                if (data.source === 'Google') score -= 2; // Google data is very limited for stocks
+                else {
+                    if (!data.profitGrowth && !data.growth) score--; // Missing growth metrics
+                    if (!data.roe && !data.roce) score--; // Missing return metrics
+                }
+                if (!data.returns?.r3y) score--; // Short history (IPO?)
+            } else {
+                // Funds
+                if (!data.returns?.r3y || !data.returns?.r5y) score--;
+            }
+
+            // 2. Consistency Checks
+            // Example: Price doubling but profit halving
+            const r1y = data.returns?.r1y || 0;
+            const profitGrowth = data.profitGrowth || 0;
+            if (r1y > 100 && profitGrowth < -20) score--; 
+
+            if (score >= 3) return "High";
+            if (score === 2) return "Medium";
+            return "Low";
         }
     </script>
 </body>
