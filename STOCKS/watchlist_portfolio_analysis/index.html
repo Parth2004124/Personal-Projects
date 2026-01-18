@@ -164,60 +164,134 @@
         </div>
 
         <!-- TAB 3: PORTFOLIO SUMMARY -->
-        <div id="view-summary" class="hidden p-4 md:p-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 h-full items-start">
-            <!-- COL 1: Allocation -->
-            <div class="bg-gradient-to-br from-indigo-50 to-white rounded-lg border border-indigo-100 shadow-sm overflow-hidden h-fit flex flex-col">
-                <div class="px-5 py-4 border-b border-indigo-100/50 flex justify-between items-center">
-                    <h3 class="text-indigo-900 font-bold text-sm uppercase tracking-wide">Asset Allocation</h3>
-                    <div class="p-1.5 bg-indigo-100 rounded-full text-indigo-600">
-                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"></path></svg>
+        <div id="view-summary" class="hidden p-4 md:p-6 flex-col gap-6 h-full items-start">
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 w-full">
+                <!-- COL 1: Allocation -->
+                <div class="bg-gradient-to-br from-indigo-50 to-white rounded-lg border border-indigo-100 shadow-sm overflow-hidden h-fit flex flex-col">
+                    <div class="px-5 py-4 border-b border-indigo-100/50 flex justify-between items-center">
+                        <h3 class="text-indigo-900 font-bold text-sm uppercase tracking-wide">Asset Allocation</h3>
+                        <div class="p-1.5 bg-indigo-100 rounded-full text-indigo-600">
+                           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"></path></svg>
+                        </div>
+                    </div>
+                    <div id="analytics-allocation" class="p-6 flex-1 flex flex-col justify-center">
+                        <div class="loader mx-auto mb-2 border-indigo-200 border-t-indigo-600"></div>
+                        <span class="text-xs text-indigo-400 text-center">Analyzing...</span>
                     </div>
                 </div>
-                <div id="analytics-allocation" class="p-6 flex-1 flex flex-col justify-center">
-                    <div class="loader mx-auto mb-2 border-indigo-200 border-t-indigo-600"></div>
-                    <span class="text-xs text-indigo-400 text-center">Analyzing...</span>
-                </div>
-            </div>
-            
-            <!-- COL 2: Performance -->
-            <div class="bg-gradient-to-br from-emerald-50 to-white rounded-lg border border-emerald-100 shadow-sm overflow-hidden h-fit flex flex-col">
-                 <div class="px-5 py-4 border-b border-emerald-100/50 flex justify-between items-center">
-                    <h3 class="text-emerald-900 font-bold text-sm uppercase tracking-wide">Performance</h3>
-                     <div class="p-1.5 bg-emerald-100 rounded-full text-emerald-600">
-                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+                
+                <!-- COL 2: Performance -->
+                <div class="bg-gradient-to-br from-emerald-50 to-white rounded-lg border border-emerald-100 shadow-sm overflow-hidden h-fit flex flex-col">
+                     <div class="px-5 py-4 border-b border-emerald-100/50 flex justify-between items-center">
+                        <h3 class="text-emerald-900 font-bold text-sm uppercase tracking-wide">Performance</h3>
+                         <div class="p-1.5 bg-emerald-100 rounded-full text-emerald-600">
+                           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+                        </div>
+                    </div>
+                    <div id="analytics-performance" class="p-6 flex-1 flex flex-col justify-center">
+                         <div class="loader mx-auto mb-2 border-emerald-200 border-t-emerald-600"></div>
+                         <span class="text-xs text-emerald-400 text-center">Calculating...</span>
                     </div>
                 </div>
-                <div id="analytics-performance" class="p-6 flex-1 flex flex-col justify-center">
-                     <div class="loader mx-auto mb-2 border-emerald-200 border-t-emerald-600"></div>
-                     <span class="text-xs text-emerald-400 text-center">Calculating...</span>
-                </div>
-            </div>
-            
-            <!-- COL 3: Health -->
-            <div class="bg-gradient-to-br from-amber-50 to-white rounded-lg border border-amber-100 shadow-sm overflow-hidden h-fit flex flex-col">
-                <div class="px-5 py-4 border-b border-amber-100/50 flex justify-between items-center">
-                    <h3 class="text-amber-900 font-bold text-sm uppercase tracking-wide">Portfolio Health</h3>
-                     <div class="p-1.5 bg-amber-100 rounded-full text-amber-600">
-                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                
+                <!-- COL 3: Health -->
+                <div class="bg-gradient-to-br from-amber-50 to-white rounded-lg border border-amber-100 shadow-sm overflow-hidden h-fit flex flex-col">
+                    <div class="px-5 py-4 border-b border-amber-100/50 flex justify-between items-center">
+                        <h3 class="text-amber-900 font-bold text-sm uppercase tracking-wide">Portfolio Health</h3>
+                         <div class="p-1.5 bg-amber-100 rounded-full text-amber-600">
+                           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        </div>
+                    </div>
+                    <div id="analytics-health" class="p-6 flex-1 flex flex-col justify-center">
+                         <div class="loader mx-auto mb-2 border-amber-200 border-t-amber-600"></div>
+                         <span class="text-xs text-amber-400 text-center"> diagnosing...</span>
                     </div>
                 </div>
-                <div id="analytics-health" class="p-6 flex-1 flex flex-col justify-center">
-                     <div class="loader mx-auto mb-2 border-amber-200 border-t-amber-600"></div>
-                     <span class="text-xs text-amber-400 text-center"> diagnosing...</span>
-                </div>
-            </div>
-
-            <!-- COL 4: Actions (PORTFOLIO-SUMMARY) -->
-            <div class="bg-gradient-to-br from-violet-50 to-white rounded-lg border border-violet-100 shadow-sm overflow-hidden h-fit flex flex-col">
-                <div class="px-5 py-4 border-b border-violet-100/50 flex justify-between items-center">
-                    <h3 class="text-violet-900 font-bold text-sm uppercase tracking-wide">Action Plan</h3>
-                    <div class="p-1.5 bg-violet-100 rounded-full text-violet-600">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+    
+                <!-- COL 4: Actions -->
+                <div class="bg-gradient-to-br from-violet-50 to-white rounded-lg border border-violet-100 shadow-sm overflow-hidden h-fit flex flex-col">
+                    <div class="px-5 py-4 border-b border-violet-100/50 flex justify-between items-center">
+                        <h3 class="text-violet-900 font-bold text-sm uppercase tracking-wide">Action Plan</h3>
+                        <div class="p-1.5 bg-violet-100 rounded-full text-violet-600">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                        </div>
                     </div>
-                </div>
-                <div id="analytics-actions" class="p-6 flex-1 flex flex-col gap-2">
+                    <div id="analytics-actions" class="p-6 flex-1 flex flex-col gap-2">
                     <div class="loader mx-auto mb-2 border-violet-200 border-t-violet-600"></div>
                     <span class="text-xs text-violet-400 text-center">Scanning...</span>
+                </div>
+            </div>
+        </div>
+            
+            <!-- // SUPPORT-DOCS: Footer Button in Analytics Pane -->
+            <div class="w-full flex justify-end mt-4 mb-8">
+                <button onclick="toggleSupportView()" class="text-[10px] text-gray-400 hover:text-gray-600 transition-colors flex items-center gap-1">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    Support & Methodology
+                </button>
+            </div>
+        </div>
+
+        <!-- // SUPPORT-DOCS: Internal Documentation View (Hidden by default) -->
+        <div id="view-support" class="hidden p-6 md:p-8 bg-white h-full overflow-y-auto custom-scroll">
+            <div class="max-w-2xl mx-auto">
+                <button onclick="toggleSupportView()" class="mb-6 text-xs font-semibold text-gray-500 hover:text-gray-800 flex items-center gap-1">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                    Back to Analytics
+                </button>
+                
+                <h1 class="text-xl font-bold text-gray-800 mb-2">System Methodology</h1>
+                <p class="text-sm text-gray-600 mb-8 leading-relaxed">
+                    This terminal evaluates portfolio structure using deterministic, rule-based algorithms. It does not provide financial advice, forecasts, or price predictions. All outputs are derived strictly from current asset data.
+                </p>
+
+                <div class="space-y-8">
+                    <div>
+                        <h2 class="font-bold text-gray-800 text-sm uppercase tracking-wide mb-3 border-b border-gray-100 pb-1">1. Scoring Philosophy</h2>
+                        <div class="text-xs text-gray-600 space-y-2">
+                            <p><span class="font-semibold text-gray-700">Deterministic Logic:</span> Scores (0-100) are calculated using fixed thresholds for growth, profitability, and valuation. No discretionary judgment is applied.</p>
+                            <p><span class="font-semibold text-gray-700">Multi-Factor Engine:</span>
+                                <ul class="list-disc pl-4 mt-1 space-y-1">
+                                    <li><b>Business Quality (40%):</b> Sales growth, Profit growth, and Operating Margins.</li>
+                                    <li><b>Moat (20%):</b> Return on Capital (ROCE), Return on Equity (ROE), and Market Dominance.</li>
+                                    <li><b>Management (20%):</b> Capital allocation efficiency proxied by valuation relative to growth (PEG-like logic) and P/E bands.</li>
+                                    <li><b>Risk (20%):</b> Volatility (Beta), Market Cap stability, and Technical Support levels.</li>
+                                </ul>
+                            </p>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h2 class="font-bold text-gray-800 text-sm uppercase tracking-wide mb-3 border-b border-gray-100 pb-1">2. Industry-Aware Normalization</h2>
+                        <div class="text-xs text-gray-600 space-y-2">
+                            <p>Raw financial ratios vary by sector. The system applies a normalization layer to prevent unfair penalization:</p>
+                            <ul class="list-disc pl-4 mt-1 space-y-1">
+                                <li><b>Banking/NBFC:</b> Focus shifts to ROE and Loan Growth. OPM (Operating Margin) is ignored as it is irrelevant for lending businesses.</li>
+                                <li><b>IT Services:</b> Higher weightage on Margins (OPM) and efficiency.</li>
+                                <li><b>FMCG:</b> Premiums awarded for high ROCE and brand stability.</li>
+                                <li><b>Cyclicals (Auto/Power):</b> Growth thresholds are adjusted to account for economic cycles; recent turnaround signals are prioritized over trailing 3-year averages.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h2 class="font-bold text-gray-800 text-sm uppercase tracking-wide mb-3 border-b border-gray-100 pb-1">3. Portfolio Analytics</h2>
+                        <div class="text-xs text-gray-600 space-y-2">
+                            <p><span class="font-semibold text-gray-700">Capital Efficiency:</span> Checks if capital is deployed effectively.
+                                <br>- <i>"Capital Trap":</i> High allocation (>10%) in a low-score asset (<50).
+                                <br>- <i>"Under-allocated":</i> Low allocation (<3%) in a high-conviction asset (>70).
+                            </p>
+                            <p><span class="font-semibold text-gray-700">Risk Concentration:</span> Flags single-asset exposure >20% or single-sector exposure >35%.</p>
+                            <p><span class="font-semibold text-gray-700">Drawdown Sensitivity:</span> Estimates portfolio volatility based on weighted Beta. "Defensive" implies lower volatility than the market; "Aggressive" implies higher.</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-gray-50 p-4 rounded border border-gray-100">
+                        <h3 class="font-bold text-gray-700 text-xs mb-1">Disclaimer</h3>
+                        <p class="text-[10px] text-gray-500 leading-normal">
+                            This system is an analytical tool for structural evaluation only. It calculates scores based on past performance and current valuation. It does not predict future stock prices. The "Action Plan" suggests structural adjustments based on rule compliance, not trading advice.
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -661,7 +735,7 @@
                     
                     if (item.score > 0) { 
                         if (item.score < 50 && pct100 > 10) {
-                            portfolioAnalytics.efficiency.push({ type: 'bad', text: `High Alloc in Weak Asset: ${name}` });
+                            portfolioAnalytics.efficiency.push({ type: 'bad', text: `High Allocation in Weak Asset: ${name}` });
                         } else if (item.score > 70 && pct100 < 3) {
                             portfolioAnalytics.efficiency.push({ type: 'good', text: `Under-allocated Winner: ${name}` });
                         } else if (item.score < 55 && pct100 < 2) {
@@ -1417,30 +1491,59 @@
         function switchTab(tab) { 
             activeTab = tab; 
             saveState(false); 
-            const views = { 'portfolio': 'view-portfolio', 'watchlist': 'view-watchlist', 'summary': 'view-summary' };
+            const views = { 'portfolio': 'view-portfolio', 'watchlist': 'view-watchlist', 'summary': 'view-summary', 'support': 'view-support' };
             const tabs = { 'portfolio': 'tab-portfolio', 'watchlist': 'tab-watchlist', 'summary': 'tab-summary' };
             const es = document.getElementById('main-empty-state');
 
-            if(Object.keys(portfolio).length === 0) {
-                Object.values(views).forEach(id => document.getElementById(id).classList.add('hidden'));
+            // Handle Empty State Visibility
+            if(Object.keys(portfolio).length === 0 && tab !== 'support') {
+                 // Hide all main views
+                Object.values(views).forEach(id => {
+                     const el = document.getElementById(id);
+                     if(el) el.classList.add('hidden');
+                });
                 es.classList.remove('hidden');
                 return;
             } else {
                 es.classList.add('hidden');
             }
 
+            // Hide/Show Views based on Tab
             Object.keys(views).forEach(key => {
                 const el = document.getElementById(views[key]);
+                if (el) {
+                    if (key === tab) el.classList.remove('hidden');
+                    else el.classList.add('hidden');
+                }
+            });
+
+            // Update Tab Styling
+            Object.keys(tabs).forEach(key => {
                 const btn = document.getElementById(tabs[key]);
                 if (key === tab) {
-                    el.classList.remove('hidden');
                     btn.className = "tab-active py-1 transition-colors flex items-center gap-2";
                 } else {
-                    el.classList.add('hidden');
                     btn.className = "tab-inactive py-1 transition-colors flex items-center gap-2";
                 }
             });
+
             if(tab === 'summary') renderSignalSummary();
+        }
+
+        // // SUPPORT-DOCS: Toggle Logic
+        function toggleSupportView() {
+            const summaryView = document.getElementById('view-summary');
+            const supportView = document.getElementById('view-support');
+            
+            if (summaryView.classList.contains('hidden')) {
+                // Currently in Support, go back to Summary
+                summaryView.classList.remove('hidden');
+                supportView.classList.add('hidden');
+            } else {
+                // Currently in Summary, go to Support
+                summaryView.classList.add('hidden');
+                supportView.classList.remove('hidden');
+            }
         }
 
         // PORTFOLIO-SUMMARY: Rendering Logic
@@ -1534,7 +1637,7 @@
                     let color = 'text-emerald-800';
                     if (item.type === 'bad') color = 'text-rose-600';
                     if (item.type === 'good') color = 'text-emerald-600';
-                    effHTML += `<div class="text-[9px] ${color} text-center mb-0.5 bg-white/50 rounded py-0.5 px-1 truncate" title="${item.text}">${item.text}</div>`;
+                    effHTML += `<div class="text-[9px] ${color} text-center mb-0.5 bg-white/50 rounded py-0.5 px-1 leading-tight" title="${item.text}">${item.text}</div>`;
                 });
                 effHTML += `</div>`;
             } else if (total > 0) {
