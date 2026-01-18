@@ -164,72 +164,71 @@
         </div>
 
         <!-- TAB 3: PORTFOLIO SUMMARY -->
-        <div id="view-summary" class="hidden p-4 md:p-6 flex-col gap-6 h-full items-start">
-            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 w-full">
-                <!-- COL 1: Allocation -->
-                <div class="bg-gradient-to-br from-indigo-50 to-white rounded-lg border border-indigo-100 shadow-sm overflow-hidden h-fit flex flex-col">
-                    <div class="px-5 py-4 border-b border-indigo-100/50 flex justify-between items-center">
-                        <h3 class="text-indigo-900 font-bold text-sm uppercase tracking-wide">Asset Allocation</h3>
-                        <div class="p-1.5 bg-indigo-100 rounded-full text-indigo-600">
-                           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"></path></svg>
-                        </div>
-                    </div>
-                    <div id="analytics-allocation" class="p-6 flex-1 flex flex-col justify-center">
-                        <div class="loader mx-auto mb-2 border-indigo-200 border-t-indigo-600"></div>
-                        <span class="text-xs text-indigo-400 text-center">Analyzing...</span>
+        <div id="view-summary" class="hidden p-4 md:p-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 h-full items-start">
+            <!-- COL 1: Allocation -->
+            <div class="bg-gradient-to-br from-indigo-50 to-white rounded-lg border border-indigo-100 shadow-sm overflow-hidden h-fit flex flex-col">
+                <div class="px-5 py-4 border-b border-indigo-100/50 flex justify-between items-center">
+                    <h3 class="text-indigo-900 font-bold text-sm uppercase tracking-wide">Asset Allocation</h3>
+                    <div class="p-1.5 bg-indigo-100 rounded-full text-indigo-600">
+                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"></path></svg>
                     </div>
                 </div>
-                
-                <!-- COL 2: Performance -->
-                <div class="bg-gradient-to-br from-emerald-50 to-white rounded-lg border border-emerald-100 shadow-sm overflow-hidden h-fit flex flex-col">
-                     <div class="px-5 py-4 border-b border-emerald-100/50 flex justify-between items-center">
-                        <h3 class="text-emerald-900 font-bold text-sm uppercase tracking-wide">Performance</h3>
-                         <div class="p-1.5 bg-emerald-100 rounded-full text-emerald-600">
-                           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
-                        </div>
-                    </div>
-                    <div id="analytics-performance" class="p-6 flex-1 flex flex-col justify-center">
-                         <div class="loader mx-auto mb-2 border-emerald-200 border-t-emerald-600"></div>
-                         <span class="text-xs text-emerald-400 text-center">Calculating...</span>
+                <div id="analytics-allocation" class="p-6 flex-1 flex flex-col justify-center">
+                    <div class="loader mx-auto mb-2 border-indigo-200 border-t-indigo-600"></div>
+                    <span class="text-xs text-indigo-400 text-center">Analyzing...</span>
+                </div>
+            </div>
+            
+            <!-- COL 2: Performance -->
+            <div class="bg-gradient-to-br from-emerald-50 to-white rounded-lg border border-emerald-100 shadow-sm overflow-hidden h-fit flex flex-col">
+                 <div class="px-5 py-4 border-b border-emerald-100/50 flex justify-between items-center">
+                    <h3 class="text-emerald-900 font-bold text-sm uppercase tracking-wide">Performance</h3>
+                     <div class="p-1.5 bg-emerald-100 rounded-full text-emerald-600">
+                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
                     </div>
                 </div>
-                
-                <!-- COL 3: Health -->
-                <div class="bg-gradient-to-br from-amber-50 to-white rounded-lg border border-amber-100 shadow-sm overflow-hidden h-fit flex flex-col">
-                    <div class="px-5 py-4 border-b border-amber-100/50 flex justify-between items-center">
-                        <h3 class="text-amber-900 font-bold text-sm uppercase tracking-wide">Portfolio Health</h3>
-                         <div class="p-1.5 bg-amber-100 rounded-full text-amber-600">
-                           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                        </div>
-                    </div>
-                    <div id="analytics-health" class="p-6 flex-1 flex flex-col justify-center">
-                         <div class="loader mx-auto mb-2 border-amber-200 border-t-amber-600"></div>
-                         <span class="text-xs text-amber-400 text-center"> diagnosing...</span>
+                <div id="analytics-performance" class="p-6 flex-1 flex flex-col justify-center">
+                     <div class="loader mx-auto mb-2 border-emerald-200 border-t-emerald-600"></div>
+                     <span class="text-xs text-emerald-400 text-center">Calculating...</span>
+                </div>
+            </div>
+            
+            <!-- COL 3: Health -->
+            <div class="bg-gradient-to-br from-amber-50 to-white rounded-lg border border-amber-100 shadow-sm overflow-hidden h-fit flex flex-col">
+                <div class="px-5 py-4 border-b border-amber-100/50 flex justify-between items-center">
+                    <h3 class="text-amber-900 font-bold text-sm uppercase tracking-wide">Portfolio Health</h3>
+                     <div class="p-1.5 bg-amber-100 rounded-full text-amber-600">
+                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                     </div>
                 </div>
-    
-                <!-- COL 4: Actions -->
-                <div class="bg-gradient-to-br from-violet-50 to-white rounded-lg border border-violet-100 shadow-sm overflow-hidden h-fit flex flex-col">
-                    <div class="px-5 py-4 border-b border-violet-100/50 flex justify-between items-center">
-                        <h3 class="text-violet-900 font-bold text-sm uppercase tracking-wide">Action Plan</h3>
-                        <div class="p-1.5 bg-violet-100 rounded-full text-violet-600">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
-                        </div>
+                <div id="analytics-health" class="p-6 flex-1 flex flex-col justify-center">
+                     <div class="loader mx-auto mb-2 border-amber-200 border-t-amber-600"></div>
+                     <span class="text-xs text-amber-400 text-center"> diagnosing...</span>
+                </div>
+            </div>
+
+            <!-- COL 4: Actions (PORTFOLIO-SUMMARY) -->
+            <div class="bg-gradient-to-br from-violet-50 to-white rounded-lg border border-violet-100 shadow-sm overflow-hidden h-fit flex flex-col">
+                <div class="px-5 py-4 border-b border-violet-100/50 flex justify-between items-center">
+                    <h3 class="text-violet-900 font-bold text-sm uppercase tracking-wide">Action Plan</h3>
+                    <div class="p-1.5 bg-violet-100 rounded-full text-violet-600">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
                     </div>
-                    <div id="analytics-actions" class="p-6 flex-1 flex flex-col gap-2">
+                </div>
+                <div id="analytics-actions" class="p-6 flex-1 flex flex-col gap-2">
                     <div class="loader mx-auto mb-2 border-violet-200 border-t-violet-600"></div>
                     <span class="text-xs text-violet-400 text-center">Scanning...</span>
                 </div>
             </div>
         </div>
             
-            <!-- // SUPPORT-DOCS: Footer Button in Analytics Pane -->
-            <div class="w-full flex justify-end mt-4 mb-8">
-                <button onclick="toggleSupportView()" class="text-[10px] text-gray-400 hover:text-gray-600 transition-colors flex items-center gap-1">
-                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    Support & Methodology
-                </button>
-            </div>
+        <!-- // SUPPORT-DOCS: Footer Button in Analytics Pane -->
+        <div class="w-full flex justify-end mt-4 mb-8">
+            <button onclick="toggleSupportView()" class="text-[10px] text-gray-400 hover:text-gray-600 transition-colors flex items-center gap-1">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                Support & Methodology
+            </button>
+        </div>
         </div>
 
         <!-- // SUPPORT-DOCS: Internal Documentation View (Hidden by default) -->
@@ -334,7 +333,56 @@
 
     </main>
 
+    <!-- STOCKY-UI: Floating Action Button -->
+    <button onclick="toggleStocky()" class="fixed bottom-6 right-6 z-50 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white font-bold py-3 px-5 rounded-full shadow-lg transform transition hover:scale-105 flex items-center gap-2 group">
+        <span class="text-xl">🤖</span>
+        <span>Stocky</span>
+        <span class="absolute -top-1 -right-1 flex h-3 w-3">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+        </span>
+    </button>
+
+    <!-- STOCKY-UI: Chat Panel Overlay -->
+    <div id="stocky-panel" class="fixed bottom-20 right-6 z-50 w-80 md:w-96 bg-white rounded-xl shadow-2xl border border-gray-200 flex flex-col hidden overflow-hidden transition-all duration-300 origin-bottom-right" style="height: 500px; max-height: 80vh;">
+        <!-- Header -->
+        <div class="bg-gradient-to-r from-violet-600 to-indigo-600 p-4 flex justify-between items-center text-white">
+            <div class="flex items-center gap-2">
+                <span class="text-xl">🤖</span>
+                <div>
+                    <h3 class="font-bold text-sm">Stocky Assistant</h3>
+                    <p class="text-[10px] text-indigo-100 opacity-90">Always here to help</p>
+                </div>
+            </div>
+            <button onclick="toggleStocky()" class="text-white/80 hover:text-white hover:bg-white/10 rounded-full p-1 transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+            </button>
+        </div>
+        
+        <!-- Messages Area -->
+        <div class="flex-1 bg-gray-50 p-4 overflow-y-auto custom-scroll space-y-3" id="stocky-messages">
+            <!-- Intro Message -->
+            <div class="flex items-start gap-2">
+                <div class="w-6 h-6 rounded-full bg-violet-100 text-violet-600 flex items-center justify-center text-xs border border-violet-200">S</div>
+                <div class="bg-white p-3 rounded-tr-xl rounded-bl-xl rounded-br-xl shadow-sm border border-gray-100 text-xs text-gray-600 max-w-[85%]">
+                    Hi! I'm Stocky. I analyze your portfolio structure and risk.<br><br>Try asking: "How is my diversification?" or "Any capital traps?"
+                </div>
+            </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="p-3 bg-white border-t border-gray-100">
+            <div class="relative">
+                <input type="text" id="stocky-input" placeholder="Ask Stocky..." class="w-full pl-4 pr-10 py-2 border border-gray-200 rounded-full text-xs focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 bg-gray-50" onkeypress="if(event.key === 'Enter') handleStockyMessage()">
+                <button id="stocky-send" onclick="handleStockyMessage()" class="absolute right-1 top-1 bottom-1 px-3 bg-violet-600 hover:bg-violet-700 text-white rounded-full flex items-center justify-center transition">
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
+        // ... (All existing logic remains exactly the same as previous step, just re-included for single file context) ...
         // --- GOOGLE SHEET CONFIG ---
         const SHEET_API_URL = "https://script.google.com/macros/s/AKfycbyScFGyxqSwudrvbCngaPtlKxtHlS4O8Q7bj4FcQEESir3LFSlnHquPxskKsBKC9kS1VQ/exec";
 
@@ -1984,6 +2032,125 @@
 
         // Ensure initApp is available globally
         document.addEventListener('DOMContentLoaded', initApp);
+
+        // STOCKY-UI: Toggle Logic
+        function toggleStocky() {
+            const panel = document.getElementById('stocky-panel');
+            if (panel.classList.contains('hidden')) {
+                panel.classList.remove('hidden');
+                setTimeout(() => panel.classList.remove('opacity-0', 'scale-95'), 10); // Animation entry
+            } else {
+                panel.classList.add('opacity-0', 'scale-95');
+                setTimeout(() => panel.classList.add('hidden'), 300); // Animation exit
+            }
+        }
+
+        // STOCKY-TONE: Interaction Logic
+        function handleStockyMessage() {
+            const input = document.getElementById('stocky-input');
+            const msg = input.value.trim();
+            if (!msg) return;
+            
+            addStockyMessage('user', msg);
+            input.value = '';
+            
+            // Simulate thinking delay
+            setTimeout(() => {
+                const response = generateStockyResponse(msg);
+                addStockyMessage('bot', response);
+            }, 600);
+        }
+
+        function addStockyMessage(sender, text) {
+            const container = document.getElementById('stocky-messages');
+            const div = document.createElement('div');
+            div.className = "flex items-start gap-2 " + (sender === 'user' ? "flex-row-reverse" : "");
+            
+            let avatar = sender === 'user' ? 
+                `<div class="w-6 h-6 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center text-xs">U</div>` :
+                `<div class="w-6 h-6 rounded-full bg-violet-100 text-violet-600 flex items-center justify-center text-xs border border-violet-200">S</div>`;
+                
+            let bubbleClass = sender === 'user' ? 
+                "bg-violet-600 text-white rounded-tl-xl rounded-bl-xl rounded-br-xl" :
+                "bg-white border border-gray-100 text-gray-600 rounded-tr-xl rounded-bl-xl rounded-br-xl shadow-sm";
+
+            div.innerHTML = `
+                ${avatar}
+                <div class="${bubbleClass} p-3 text-xs max-w-[85%]">
+                    ${text}
+                </div>
+            `;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function generateStockyResponse(query) {
+            const q = query.toLowerCase();
+            
+            // 1. Portfolio Health Intent
+            if (q.includes('health') || q.includes('score') || q.includes('doing')) {
+                const health = portfolioAnalytics.healthScore || 0;
+                let tone = "stable";
+                if (health > 65) tone = "strong";
+                if (health < 40) tone = "struggling";
+                
+                return `According to the model, your portfolio's structural health is currently ${tone} with a composite score of ${health}. This score is a weighted average of the fundamental quality of your individual holdings, not a market prediction.`;
+            }
+            
+            // 2. Diversification/Risk Intent
+            if (q.includes('diversif') || q.includes('risk') || q.includes('concentrat')) {
+                const divScore = portfolioAnalytics.risk.divScore || 0;
+                const sectors = (portfolioAnalytics.risk.sectors || []).map(s => s[0]).join(', ');
+                const alerts = portfolioAnalytics.risk.alerts || [];
+                
+                let reply = `Your diversification score sits at ${divScore}/100. `;
+                if (sectors) reply += `Structural data shows major exposure to ${sectors}. `;
+                if (alerts.length > 0) reply += `The system flags some concentration risks: ${alerts[0]}.`;
+                else reply += `The allocation looks balanced across sectors based on our standard risk thresholds.`;
+                return reply;
+            }
+            
+            // 3. Efficiency/Traps Intent
+            if (q.includes('efficien') || q.includes('trap') || q.includes('bad') || q.includes('mistake')) {
+                const eff = portfolioAnalytics.efficiency || [];
+                const traps = eff.filter(e => e.type === 'bad');
+                
+                if (traps.length > 0) {
+                    return `I found some potential capital inefficiencies. Specifically, ${traps[0].text}. This suggests a large allocation in a structurally weak asset according to our scoring model.`;
+                }
+                return `Capital deployment looks efficient based on current metrics. I haven't flagged any major "Capital Traps" where high allocation meets low quality.`;
+            }
+
+            // 4. Action/Buy/Sell Intent
+            if (q.includes('buy') || q.includes('sell') || q.includes('action')) {
+                let buys = [];
+                let sells = [];
+                Object.values(stockAnalysis).forEach(s => {
+                    if (s.action === 'BUY NOW') buys.push(s.name);
+                    if (s.action === 'EXIT') sells.push(s.name);
+                });
+                
+                if (buys.length === 0 && sells.length === 0) {
+                    return `I don't see any immediate high-conviction actions triggering right now. The market might be in a 'Wait and Watch' zone for your watchlist items based on our entry rules.`;
+                }
+                
+                let msg = "";
+                if (buys.length) msg += `The system signals a BUY for ${buys.slice(0,2).join(', ')} based on strong fundamentals and timing alignment. `;
+                if (sells.length) msg += `There is an EXIT signal for ${sells.slice(0,2).join(', ')} due to deteriorating metrics or valuation breaches.`;
+                return msg;
+            }
+
+            // 5. Specific Stock Query
+            // Naive check against portfolio keys or names
+            const symbol = Object.keys(stockAnalysis).find(s => q.includes(s.toLowerCase()) || q.includes(stockAnalysis[s].name.toLowerCase().toLowerCase()));
+            if (symbol) {
+                const data = stockAnalysis[symbol];
+                return `Looking at ${data.name}, the system derives a ${data.action} signal. This is driven by ${data.explanation || 'structural factors'}, resulting in a conviction score that suggests ${data.action === 'BUY NOW' ? 'structural strength' : 'caution'}. ${data.levels ? `Key levels based on conviction: Entry/SL at ₹${(data.levels.sl || data.levels.entry || 0).toLocaleString()}.` : ''}`;
+            }
+
+            // Default Fallback (Guardrail)
+            return `I'm tuned to analyze portfolio structure, risk, and scoring rules. I can't predict market movements or offer general financial advice, but I can walk you through the data on your screen. Try asking about "Portfolio Health" or "Capital Efficiency".`;
+        }
     </script>
 </body>
 </html>
