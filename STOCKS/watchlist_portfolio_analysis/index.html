@@ -358,4 +358,1068 @@
                 if (ret1y > 40) scores.risk += 10; else { if (beta < 1.1) scores.risk += 10; else if (beta < 1.3) scores.risk += 5; }
                 scores.risk = Math.min(20, scores.risk);
 
-           
+                scores.total = scores.business + scores.moat + scores.management + scores.risk;
+
+                if (pe < 15 && roe > 15 && profitGrowth > 0) { scores.total += 15; reasons.push("High Quality Value"); }
+                else if (pe < 12 && profitGrowth > 10) { scores.total += 10; reasons.push("Deep Value"); }
+
+                scores.total = Math.min(99, scores.total); 
+                if (reasons.length > 0) scores.explanation = reasons.slice(0, 2).join(" & ");
+                else scores.explanation = scores.total > 50 ? "Stable" : "Weak";
+            }
+            return scores;
+        }
+
+        // --- SCORING ENGINE 2: PORTER'S 5 FORCES ---
+        function calculatePortersScore(data) {
+            if (data.type !== 'STOCK') return null;
+
+            const roe = data.roe || 0;
+            const roce = data.roce || 0;
+            const salesGrowth = data.growth || 0;
+            const profitGrowth = data.profitGrowth || 0;
+            const opm = data.opm || 0;
+            const mcap = data.mcap || 0;
+
+            let pScore = { entrants: 0, suppliers: 0, buyers: 0, substitutes: 0, rivalry: 0, total: 0 };
+
+            if (mcap > 10000 && roce > 20) pScore.entrants = 20;
+            else if (mcap > 5000 && roce > 15) pScore.entrants = 15;
+            else if (mcap > 2000) pScore.entrants = 10;
+            else pScore.entrants = 5;
+
+            if (opm > 25) pScore.suppliers = 20;
+            else if (opm > 18) pScore.suppliers = 15;
+            else if (opm > 10) pScore.suppliers = 10;
+            else pScore.suppliers = 5;
+
+            if (roe > 22) pScore.buyers = 20;
+            else if (roe > 16) pScore.buyers = 15;
+            else if (roe > 12) pScore.buyers = 10;
+            else pScore.buyers = 5;
+
+            if (salesGrowth > 15) pScore.substitutes = 20;
+            else if (salesGrowth > 10) pScore.substitutes = 15;
+            else if (salesGrowth > 5) pScore.substitutes = 10;
+            else pScore.substitutes = 5;
+
+            if (profitGrowth > 15) pScore.rivalry = 20;
+            else if (profitGrowth > 10) pScore.rivalry = 15;
+            else if (profitGrowth > 0) pScore.rivalry = 10;
+            else pScore.rivalry = 5;
+
+            pScore.total = Math.min(99, pScore.entrants + pScore.suppliers + pScore.buyers + pScore.substitutes + pScore.rivalry);
+            return pScore;
+        }
+
+        // --- AUTO SAVE LOGIC ---
+        function saveState(pushToCloud = true) {
+            const state = { portfolio: portfolio, analysis: stockAnalysis, activeTab: activeTab, cardViews: cardViews };
+            localStorage.setItem('stockSightData', JSON.stringify(state));
+            calculateTotals();
+            updateViewCounts();
+            if (activeTab === 'summary') renderSignalSummary();
+
+            if (!pushToCloud) return;
+
+            updateCloudStatus('loading', 'Saving...');
+            if (saveTimeout) clearTimeout(saveTimeout);
+            
+            saveTimeout = setTimeout(async () => {
+                if (isOfflineMode) { updateCloudStatus('error', 'Offline'); return; }
+                try {
+                    // Sanitize before saving to ensure no metadata (like timestamps) is sent back to the sheet
+                    const cleanPayload = sanitizePortfolio(portfolio);
+
+                    const res = await fetch(SHEET_API_URL, {
+                        method: 'POST',
+                        body: JSON.stringify(cleanPayload),
+                        credentials: 'omit',
+                        headers: { "Content-Type": "text/plain" } 
+                    });
+                    const json = await res.json();
+                    if (json.status === 'success') {
+                        updateCloudStatus('success', 'Saved');
+                    } else {
+                        throw new Error(json.message || "Script returned error");
+                    }
+                } catch (e) {
+                    try {
+                        const cleanPayload = sanitizePortfolio(portfolio);
+                        await fetch(SHEET_API_URL, {
+                            method: 'POST',
+                            body: JSON.stringify(cleanPayload),
+                            mode: 'no-cors',
+                            credentials: 'omit',
+                            headers: { "Content-Type": "text/plain" }
+                        });
+                        updateCloudStatus('success', 'Saved (Blind)');
+                    } catch (err2) {
+                        updateCloudStatus('error', 'Save Failed');
+                    }
+                }
+            }, 2000); 
+        }
+
+        // --- INIT ---
+        async function initApp() {
+            const robustData = localStorage.getItem('stockSightData');
+            if (robustData) {
+                const state = JSON.parse(robustData);
+                // 1. Sanitize loaded data immediately
+                portfolio = sanitizePortfolio(state.portfolio) || {};
+                
+                stockAnalysis = state.analysis || {};
+                activeTab = state.activeTab || 'portfolio';
+                cardViews = state.cardViews || {};
+                
+                let migrationNeeded = false;
+                Object.keys(portfolio).forEach(key => {
+                    const clean = cleanTicker(key);
+                    if (clean !== key) {
+                        migrationNeeded = true;
+                        portfolio[clean] = portfolio[key];
+                        delete portfolio[key];
+                        if (stockAnalysis[key]) { stockAnalysis[clean] = stockAnalysis[key]; delete stockAnalysis[key]; }
+                        if (cardViews[key]) { cardViews[clean] = cardViews[key]; delete cardViews[key]; }
+                    }
+                });
+                
+                if (migrationNeeded) saveState(false);
+
+                Object.keys(stockAnalysis).forEach(sym => {
+                    if(stockAnalysis[sym].price) livePrices[sym] = stockAnalysis[sym].price;
+                });
+                renderUI();
+            } else if (localStorage.getItem('stockPortfolio')) {
+                portfolio = sanitizePortfolio(JSON.parse(localStorage.getItem('stockPortfolio')));
+                renderUI();
+            } else {
+                document.getElementById('empty-watchlist').innerHTML = "Initializing...";
+            }
+
+            await performCloudSync();
+
+            const symbols = Object.keys(portfolio);
+            if (symbols.length > 0) {
+                setTimeout(() => { symbols.forEach(sym => fetchAsset(sym)); }, 100);
+            }
+        }
+
+        async function performCloudSync() {
+            updateCloudStatus('loading', 'Syncing...');
+            isOfflineMode = false;
+            try {
+                const response = await fetch(SHEET_API_URL, { method: 'GET', credentials: 'omit' });
+                if (!response.ok) throw new Error("HTTP " + response.status);
+                const cloudData = await response.json();
+                if (cloudData.status === 'error') throw new Error(cloudData.message);
+
+                if (cloudData && Object.keys(cloudData).length > 0) {
+                    // 2. Sanitize Cloud Data (Remove 'sync-ts', 'status' etc)
+                    portfolio = sanitizePortfolio(cloudData);
+                    saveState(false); 
+                    renderUI(); 
+                } else if (Object.keys(portfolio).length > 0) {
+                    saveState(true);
+                }
+                updateCloudStatus('success', 'Synced');
+            } catch (e) {
+                isOfflineMode = true;
+                updateCloudStatus('error', 'Offline');
+                document.getElementById('main-empty-state').classList.add('hidden');
+                if (Object.keys(portfolio).length === 0) document.getElementById('empty-watchlist').innerHTML = "Offline Mode.<br>Add stocks locally.";
+            }
+        }
+
+        function forceSync() { sessionStorage.removeItem('syncErrorShown'); performCloudSync(); }
+
+        function renderUI() {
+            // STRICT FILTERING applied directly to the render loop
+            const symbols = Object.keys(portfolio).filter(key => {
+                const k = key.toLowerCase();
+                return !BLACKLIST_KEYS.some(bad => k.includes(bad));
+            });
+
+            if (symbols.length > 0) {
+                document.getElementById('empty-watchlist').classList.add('hidden');
+                document.getElementById('main-empty-state').classList.add('hidden');
+                symbols.forEach(sym => {
+                    if (stockAnalysis[sym]) renderCard(sym, stockAnalysis[sym], true); 
+                    else createCardSkeleton(sym);
+                    renderWatchlistItem(sym, !stockAnalysis[sym]);
+                });
+            }
+            switchTab(activeTab);
+            updateViewCounts();
+            calculateTotals();
+        }
+
+        // --- FETCHING ---
+        const PROXIES = [
+            { url: (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`, type: 'text' },
+            { url: (url) => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}&t=${Date.now()}`, type: 'json' },
+            { url: (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`, type: 'text' },
+            { url: (url) => `https://thingproxy.freeboard.io/fetch/${encodeURIComponent(url)}`, type: 'text' }
+        ];
+
+        async function fetchWithFallback(targetUrl) {
+            let lastError;
+            for (const proxy of PROXIES) {
+                try {
+                    const controller = new AbortController();
+                    const id = setTimeout(() => controller.abort(), 10000); 
+                    const res = await fetch(proxy.url(targetUrl), { signal: controller.signal });
+                    clearTimeout(id);
+                    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+                    let content = proxy.type === 'json' ? (await res.json()).contents : await res.text();
+                    if(!content || content.length < 50) throw new Error("Empty/Blocked");
+                    if(targetUrl.includes('yahoo') && !content.trim().startsWith('{') && !content.includes('QuoteSummaryStore')) throw new Error("Invalid Yahoo");
+                    return content;
+                } catch(e) { lastError = e; }
+            }
+            throw lastError;
+        }
+
+        // --- ASSET ROUTER ---
+        const ETF_KEYWORDS = ['BEES', 'ETF', 'GOLD', 'LIQUID', 'HANGSENG', 'NIFTY', 'SENSEX', 'MOVALUE', 'MOMENTUM', 'MIDCAP', 'SMALLCAP', 'JUNIOR'];
+
+        async function fetchAsset(input) {
+            // Safety Check inside fetching
+            const lowerInput = input.toLowerCase();
+            if(BLACKLIST_KEYS.some(k => lowerInput.includes(k))) return;
+
+            activeRequests++;
+            updateReqCount();
+            const sym = input.toUpperCase();
+            try {
+                if (/^\d{5,6}$/.test(sym)) await fetchMutualFund(sym);
+                else await fetchStockOrETF(sym);
+                const card = document.getElementById(`card-${sym}`);
+                if(card) card.classList.remove('updating');
+            } catch(e) {
+                renderErrorCard(sym, e.message);
+            } finally {
+                activeRequests--;
+                updateReqCount();
+            }
+        }
+
+        async function fetchMutualFund(code) {
+            const url = `https://api.mfapi.in/mf/${code}`;
+            const res = await fetch(url);
+            if(!res.ok) throw new Error("MF Not Found");
+            const json = await res.json();
+            const data = { 
+                name: json.meta.scheme_name, 
+                price: parseFloat(json.data[0].nav), 
+                type: 'FUND', 
+                meta: json.meta.fund_house,
+                returns: calculateMFReturns(json.data) 
+            };
+            livePrices[code] = data.price;
+            renderCard(code, data);
+        }
+
+        async function fetchStockOrETF(sym, betaPromise) {
+            const isLikelyETF = ETF_KEYWORDS.some(k => sym.includes(k));
+            if (!isLikelyETF) {
+                try {
+                    const html = await fetchWithFallback(`https://www.screener.in/company/${sym}/consolidated/`);
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const ratios = doc.getElementById('top-ratios');
+                    if (ratios) {
+                        const getVal = (txt) => {
+                            for(let li of ratios.querySelectorAll('li')) {
+                                if(li.innerText.toLowerCase().includes(txt.toLowerCase())) return parseFloat(li.querySelector('.number')?.innerText.replace(/,/g,'') || 0);
+                            }
+                            return null;
+                        };
+                        const price = getVal('Current Price');
+                        if(price) {
+                            let growth = 0;
+                            let opm = getVal('OPM %') || 0; 
+                            let profitGrowth = 0;
+                            const idxSales = html.indexOf("Compounded Sales Growth");
+                            if(idxSales > -1) {
+                                const sub = html.substring(idxSales, idxSales+1500);
+                                let m = sub.match(/3 Years:[\s\S]*?([0-9\.-]+)\s?%/i);
+                                growth = m ? parseFloat(m[1]) : 0;
+                            }
+                            const idxProfit = html.indexOf("Compounded Profit Growth");
+                            if(idxProfit > -1) {
+                                const sub = html.substring(idxProfit, idxProfit+1500);
+                                let m = sub.match(/3 Years:[\s\S]*?([0-9\.-]+)\s?%/i);
+                                profitGrowth = m ? parseFloat(m[1]) : 0;
+                            }
+                            let extraData = {};
+                            try {
+                                const yData = await fetchYahooQuote(`${sym}.NS`);
+                                if(yData) extraData = { beta: yData.beta, returns: yData.returns };
+                            } catch(e) {}
+                            const data = { 
+                                name: doc.querySelector('h1')?.innerText || sym, 
+                                price: price, 
+                                pe: getVal('Stock P/E'), 
+                                roe: getVal('ROE'),
+                                roce: getVal('ROCE'), 
+                                mcap: getVal('Market Cap'),
+                                opm: opm,
+                                growth: growth,
+                                profitGrowth: profitGrowth,
+                                beta: extraData.beta || 1.0,
+                                returns: extraData.returns, 
+                                type: 'STOCK' 
+                            };
+                            livePrices[sym] = data.price;
+                            renderCard(sym, data);
+                            return; 
+                        }
+                    }
+                } catch (e) {}
+            }
+            try {
+                let targetSym = sym.endsWith('.NS') || sym.endsWith('.BO') ? sym : `${sym}.NS`;
+                let data = await fetchYahooQuote(targetSym);
+                if (!data && !sym.includes('.')) data = await fetchYahooQuote(`${sym}.BO`);
+                if (data) {
+                    livePrices[sym] = data.price;
+                    renderCard(sym, data);
+                    return;
+                }
+            } catch (yErr) {}
+            try {
+                const gData = await fetchGoogleFinance(sym);
+                if (gData) {
+                    livePrices[sym] = gData.price;
+                    renderCard(sym, gData);
+                    return;
+                }
+            } catch (gErr) {}
+            throw new Error("Asset not found");
+        }
+
+        async function fetchYahooQuote(yahooSym) {
+            try {
+                const chartUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSym}?interval=1mo&range=5y`;
+                const chartJsonStr = await fetchWithFallback(chartUrl);
+                const chartJson = JSON.parse(chartJsonStr);
+                const result = chartJson?.chart?.result?.[0];
+                const meta = result?.meta;
+                
+                if (meta && meta.regularMarketPrice) {
+                    const quotes = result.indicators.quote[0].close;
+                    const calcRet = (months) => {
+                        if(!quotes || quotes.length < months) return 0;
+                        const curr = quotes[quotes.length-1];
+                        const old = quotes[quotes.length - 1 - months];
+                        if(!old) return 0;
+                        const years = months/12;
+                        return ((Math.pow(curr/old, 1/years) - 1) * 100);
+                    };
+                    const rawName = meta.symbol || yahooSym;
+                    const cleanName = rawName.replace('.NS', '').replace('.BO', '');
+                    return { 
+                        name: cleanName, 
+                        price: meta.regularMarketPrice, 
+                        type: 'ETF', 
+                        pe: null, 
+                        beta: 1.0, 
+                        roe: null,
+                        returns: { r1y: calcRet(12), r3y: calcRet(36), r5y: calcRet(60) },
+                        technicals: { 
+                            high52: meta.fiftyTwoWeekHigh,
+                            ma50: meta.fiftyDayAverage,
+                            ma200: meta.twoHundredDayAverage
+                        }
+                    };
+                }
+            } catch(e) {
+                const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${yahooSym}`;
+                const jsonStr = await fetchWithFallback(url);
+                const json = JSON.parse(jsonStr);
+                const res = json?.quoteResponse?.result?.[0];
+                if(res) {
+                    return {
+                        name: res.shortName || yahooSym,
+                        price: res.regularMarketPrice,
+                        type: res.trailingPE ? 'STOCK' : 'ETF',
+                        pe: res.trailingPE,
+                        beta: res.beta || 1.0,
+                        returns: { r1y: 0, r3y: 0, r5y: 0 } 
+                    };
+                }
+            }
+            return null;
+        }
+
+        async function fetchGoogleFinance(sym) {
+            let html = await fetchWithFallback(`https://www.google.com/finance/quote/${sym}:NSE`);
+            if (html.includes("Couldn't find")) html = await fetchWithFallback(`https://www.google.com/finance/quote/${sym}:BSE`);
+            
+            const priceMatch = html.match(/class="YMlKec fxKbKc">₹?([0-9,.]+)</);
+            const nameMatch = html.match(/<div class="zzDege">([^<]+)</);
+            const rangeMatch = html.match(/Year range.*?<div[^>]*>₹?([0-9,.]+)\s*-\s*₹?([0-9,.]+)/);
+
+            if (priceMatch) {
+                const price = parseFloat(priceMatch[1].replace(/,/g, ''));
+                let high52 = 0, low52 = 0;
+                if(rangeMatch) {
+                    low52 = parseFloat(rangeMatch[1].replace(/,/g, ''));
+                    high52 = parseFloat(rangeMatch[2].replace(/,/g, ''));
+                } else {
+                    high52 = price * 1.05; low52 = price * 0.95; 
+                }
+                return { 
+                    name: nameMatch ? nameMatch[1] : sym, 
+                    price: price, 
+                    type: 'ETF', 
+                    pe: null, roe: null, 
+                    source: 'Google', 
+                    technicals: { high52, low52 }
+                };
+            }
+            return null;
+        }
+
+        // --- RENDERING ---
+        function renderCard(sym, data, isCached = false) {
+            const qty = portfolio[sym].qty || 0;
+            const isHeld = qty > 0;
+            const targetContainerId = isHeld ? 'view-portfolio' : 'view-watchlist';
+            const container = document.getElementById(targetContainerId);
+            
+            let card = document.getElementById(`card-${sym}`);
+            if (!card) {
+                card = document.createElement('div');
+                card.id = `card-${sym}`;
+                container.appendChild(card);
+            } else if (card.parentElement.id !== targetContainerId) {
+                container.appendChild(card);
+            }
+
+            let signal = "HOLD", sigClass = "signal-hold", typeBadge = "badge-stock", metricsHTML = "";
+            let sourceTag = data.source === 'Google' ? `<span class="badge-gfin text-[9px] px-1 rounded ml-1">G-FIN</span>` : "";
+            const cleanSym = cleanTicker(sym);
+
+            // Calculate Scores
+            const fScore = calculateFundamentalScore(data);
+            const pScore = calculatePortersScore(data);
+            const tScore = calculateTrajectoryScore(data);
+            const rsScore = calculateRelativeStrength(data);
+            
+            // Boost & Normalize Logic
+            if (fScore) {
+                let rawTotal = fScore.total + tScore + rsScore;
+                
+                if (data.type === 'ETF' || data.type === 'FUND') {
+                      // Apply Normalization Engine ONLY for ETFs/Funds (Logarithmic curve)
+                      fScore.total = calculateNormalizedScore(rawTotal);
+                } else {
+                      // Stocks: Simple cap at 99 (Linear)
+                      fScore.total = Math.max(0, Math.min(99, rawTotal));
+                }
+            }
+
+            const viewMode = cardViews[sym] || 'fundamental';
+            let longTermLabel = "";
+            
+            const conviction = calculateConviction(fScore, pScore);
+            const convictionBadge = getConvictionBadge(conviction);
+            const trajectory = calculateTrajectory(data);
+            const trajectoryBadge = getTrajectoryBadge(trajectory);
+            const timing = calculateTiming(data);
+            const timingBadge = getTimingBadge(timing);
+            const fundTiming = calculateFundamentalTiming(data);
+            const fundTimingBadge = getFundamentalTimingBadge(fundTiming);
+
+            // NEW EXTENSION: Confidence Gate
+            const confidence = calculateDataConfidence(data);
+
+            const decision = calculateFinalDecision(conviction, trajectory, timing, data.type, isHeld);
+            if (fScore) {
+                decision.summary = calculateScoreActionMapper(fScore.total, fundTiming, conviction, isHeld);
+            }
+            
+            // Pass confidence to decision block
+            const decisionBlock = getDecisionBlock(decision, confidence);
+            const moreshwarBlock = getMoreshwarBlock(data.price, fScore, pScore, isHeld, decision.action);
+
+            const rsColor = rsScore > 0 ? 'text-green-600' : (rsScore < 0 ? 'text-red-600' : 'text-gray-400');
+            const rsSign = rsScore > 0 ? '+' : '';
+
+            if(data.type === 'STOCK' && fScore) {
+                typeBadge = "badge-stock";
+                
+                if (fScore.total >= 65) { signal = "BUY"; sigClass = "signal-buy"; }
+                else if (fScore.total <= 40) { signal = "SELL"; sigClass = "signal-sell"; }
+
+                if (pScore && pScore.total > fScore.total) {
+                    longTermLabel = `<div class="text-[8px] font-semibold bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded border border-purple-200 mt-1 text-right">Long Term Potential</div>`;
+                }
+
+                if (!isHeld) {
+                    if (signal === "HOLD") signal = "WAIT";
+                    if (signal === "SELL") { signal = "AVOID"; sigClass = "signal-gray"; }
+                }
+
+                const tabHTML = `
+                    <div class="flex gap-2 mb-3 mt-1">
+                        <button onclick="switchCardTab('${sym}', 'fundamental')" class="analysis-tab ${viewMode === 'fundamental' ? 'active-fund' : 'inactive'}">Fundamental</button>
+                        <button onclick="switchCardTab('${sym}', 'porter')" class="analysis-tab ${viewMode === 'porter' ? 'active-port' : 'inactive'}">Porter's 5</button>
+                    </div>
+                `;
+
+                if (viewMode === 'fundamental') {
+                    metricsHTML = `
+                        ${tabHTML}
+                        <div class="space-y-3 animate-fade-in">
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="text-xs font-bold w-8 text-right">${fScore.total}</span>
+                                <div class="flex-1 score-bar-bg h-2">
+                                    <div class="score-bar-fill ${fScore.total > 60 ? 'bg-green-500' : (fScore.total < 40 ? 'bg-red-500' : 'bg-yellow-500')}" style="width: ${fScore.total}%"></div>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2 text-[10px]">
+                                <div class="bg-gray-50 p-1.5 rounded"><span class="text-gray-400 block">Business</span><span class="font-bold text-gray-700">${fScore.business}/40</span></div>
+                                <div class="bg-gray-50 p-1.5 rounded"><span class="text-gray-400 block">Moat</span><span class="font-bold text-gray-700">${fScore.moat}/20</span></div>
+                                <div class="bg-gray-50 p-1.5 rounded"><span class="text-gray-400 block">Mgmt</span><span class="font-bold text-gray-700">${fScore.management}/20</span></div>
+                                <div class="bg-gray-50 p-1.5 rounded"><span class="text-gray-400 block">Risk</span><span class="font-bold text-gray-700">${fScore.risk}/20</span></div>
+                                <div class="bg-indigo-50 p-1.5 rounded"><span class="text-gray-400 block">Trajectory</span><span class="font-bold text-indigo-700">+${tScore}</span></div>
+                                <div class="bg-gray-50 p-1.5 rounded"><span class="text-gray-400 block">Rel Strength</span><span class="font-bold ${rsColor}">${rsSign}${rsScore}</span></div>
+                            </div>
+                            ${decisionBlock}
+                            ${moreshwarBlock}
+                        </div>`;
+                } else if (viewMode === 'porter') {
+                    metricsHTML = `
+                        ${tabHTML}
+                        <div class="space-y-3 animate-fade-in">
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="text-xs font-bold w-8 text-right text-blue-600">${pScore.total}</span>
+                                <div class="flex-1 score-bar-bg h-2">
+                                    <div class="score-bar-fill bg-blue-500" style="width: ${pScore.total}%"></div>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2 text-[10px]">
+                                <div class="bg-blue-50 p-1.5 rounded"><span class="text-gray-400 block">Barriers</span><span class="font-bold text-blue-800">${pScore.entrants}/20</span></div>
+                                <div class="bg-blue-50 p-1.5 rounded"><span class="text-gray-400 block">Suppliers</span><span class="font-bold text-blue-800">${pScore.suppliers}/20</span></div>
+                                <div class="bg-blue-50 p-1.5 rounded"><span class="text-gray-400 block">Buyers</span><span class="font-bold text-blue-800">${pScore.buyers}/20</span></div>
+                                <div class="bg-blue-50 p-1.5 rounded"><span class="text-gray-400 block">Substitutes</span><span class="font-bold text-blue-800">${pScore.substitutes}/20</span></div>
+                                <div class="col-span-2 bg-blue-50 p-1.5 rounded flex justify-between"><span class="text-gray-400">Competitive Rivalry</span><span class="font-bold text-blue-800">${pScore.rivalry}/20</span></div>
+                            </div>
+                            ${decisionBlock}
+                            ${moreshwarBlock}
+                        </div>`;
+                }
+
+            } else if (fScore) {
+                // ... existing ETF logic ...
+                signal = "SIP"; sigClass = "signal-sip";
+                if (fScore.total > 70) signal = "BUY"; 
+                
+                if (qty === 0) {
+                     if (signal === "SIP") { signal = "TRACK"; sigClass = "signal-gray"; }
+                }
+
+                typeBadge = data.type === 'ETF' ? "badge-etf" : "badge-fund";
+                const isMF = data.type === 'FUND';
+                
+                let l1="Returns", l2="Momentum", l3="Trend", l4="Safety";
+                if(data.explanation === "Trend Strength") { l1="Trend"; l2="Momentum"; l3="Strength"; l4="Support"; }
+                else if(isMF) { l1="1Y Ret"; l2="3Y Ret"; l3="5Y Ret"; l4="Trend"; }
+
+                metricsHTML = `
+                    <div class="space-y-3">
+                         <div class="flex items-center gap-2 mb-2">
+                            <span class="text-xs font-bold w-8 text-right">${fScore.total}</span>
+                            <div class="flex-1 score-bar-bg h-2">
+                                <div class="score-bar-fill bg-blue-500" style="width: ${fScore.total}%"></div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 text-[10px]">
+                            <div class="bg-gray-50 p-1.5 rounded"><span class="text-gray-400 block">${l1}</span><span class="font-bold text-gray-700">${fScore.business}/40</span></div>
+                            <div class="bg-gray-50 p-1.5 rounded"><span class="text-gray-400 block">${l2}</span><span class="font-bold text-gray-700">${fScore.moat}/20</span></div>
+                            <div class="bg-gray-50 p-1.5 rounded"><span class="text-gray-400 block">${l3}</span><span class="font-bold text-gray-700">${fScore.management}/20</span></div>
+                            <div class="bg-gray-50 p-1.5 rounded"><span class="text-gray-400 block">${l4}</span><span class="font-bold text-gray-700">${fScore.risk}/20</span></div>
+                        </div>
+                        ${decisionBlock}
+                        ${moreshwarBlock}
+                    </div>`;
+            } else {
+                 metricsHTML = ``; 
+                 signal = "N/A"; sigClass = "signal-gray";
+            }
+
+            stockAnalysis[sym] = { 
+                signal, name: data.name, price: data.price, type: data.type, 
+                pe: data.pe, growth: data.growth, profitGrowth: data.profitGrowth, opm: data.opm,
+                roe: data.roe, mcap: data.mcap, roce: data.roce, beta: data.beta, source: data.source,
+                returns: data.returns, technicals: data.technicals
+            };
+            if(!isCached) saveState(true); 
+
+            const savedQty = portfolio[sym].qty || '';
+            const savedAvg = portfolio[sym].avg || '';
+            const opacityClass = isCached ? 'updating' : '';
+
+            card.className = `bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden min-h-[340px] flex flex-col relative ${opacityClass}`;
+            card.innerHTML = `
+                <div class="p-5 flex flex-col h-full">
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="overflow-hidden">
+                            <h3 class="font-bold text-gray-800 text-lg leading-tight truncate w-40" title="${data.name}">${data.name}</h3>
+                            <div class="flex gap-2 mt-1 items-center flex-wrap">
+                                <span class="text-[10px] font-mono text-gray-500 bg-gray-100 px-1 rounded">${cleanSym}</span>
+                                <span class="text-[10px] px-1 rounded font-bold ${typeBadge}">${data.type}</span>
+                                ${convictionBadge}
+                                ${fundTimingBadge}
+                                ${trajectoryBadge}
+                                ${timingBadge}
+                                ${sourceTag}
+                            </div>
+                        </div>
+                        <div class="flex flex-col items-end">
+                            <div class="text-[10px] font-bold px-2 py-1 rounded border ${sigClass}">${signal}</div>
+                            <span class="text-[9px] text-gray-400 mt-1 italic w-20 text-right leading-tight">${fScore?.explanation || ''}</span>
+                            ${longTermLabel}
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between items-end pb-3 border-b border-gray-100 mb-3">
+                        <p class="text-2xl font-bold text-gray-800">₹${data.price.toLocaleString()}</p>
+                    </div>
+
+                    <div class="bg-gray-50 rounded border border-gray-100 p-2 mb-3">
+                        <div class="flex gap-2 mb-1">
+                            <div class="flex-1"><label class="text-[9px] text-gray-500 uppercase block mb-1">Qty</label><input type="number" class="portfolio-input" placeholder="0" value="${savedQty}" onchange="updateHolding('${sym}', 'qty', this.value)"></div>
+                            <div class="flex-1"><label class="text-[9px] text-gray-500 uppercase block mb-1">Avg</label><input type="number" class="portfolio-input" placeholder="₹" value="${savedAvg}" onchange="updateHolding('${sym}', 'avg', this.value)"></div>
+                        </div>
+                        <div class="flex justify-between items-center text-xs pt-1"><span class="text-gray-400">P&L:</span><span id="pnl-${sym}" class="font-bold text-gray-300">--</span></div>
+                    </div>
+                    
+                    ${metricsHTML}
+                </div>`;
+            
+            if(!isCached) {
+                renderWatchlistItem(sym, false);
+                updateCardPnL(sym);
+                calculateTotals();
+                updateViewCounts();
+            } else {
+                updateCardPnL(sym);
+            }
+        }
+
+        // --- UI INTERACTION ---
+        window.switchCardTab = function(sym, mode) {
+            cardViews[sym] = mode;
+            if (stockAnalysis[sym]) {
+                renderCard(sym, stockAnalysis[sym], false); 
+                saveState(false); 
+            }
+        }
+
+        function createCardSkeleton(sym) {
+            const qty = portfolio[sym].qty || 0;
+            const containerId = qty > 0 ? 'view-portfolio' : 'view-watchlist';
+            const grid = document.getElementById(containerId);
+            const card = document.createElement('div');
+            card.id = `card-${sym}`;
+            card.className = "bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden min-h-[300px] relative";
+            card.innerHTML = `<div class="absolute inset-0 flex flex-col items-center justify-center z-10 bg-white/80"><div class="loader mb-2"></div><p class="text-xs text-gray-400">Loading ${cleanTicker(sym)}...</p></div>`;
+            grid.insertBefore(card, grid.firstChild);
+        }
+
+        function renderWatchlistItem(sym, isLoading) {
+            const container = document.getElementById('watchlist-container');
+            let item = document.getElementById(`wl-${sym}`);
+            const price = livePrices[sym] ? `₹${livePrices[sym].toLocaleString()}` : '--';
+            const qty = portfolio[sym].qty || 0;
+            const icon = qty > 0 ? '💼' : '👁️'; 
+            
+            const cleanSym = cleanTicker(sym);
+
+            if (!item) {
+                item = document.createElement('div');
+                item.id = `wl-${sym}`;
+                item.className = "watchlist-item p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer flex justify-between items-center group transition-colors";
+                item.onclick = () => { 
+                    const targetTab = portfolio[sym].qty > 0 ? 'portfolio' : 'watchlist';
+                    switchTab(targetTab);
+                    setTimeout(() => document.getElementById(`card-${sym}`)?.scrollIntoView({behavior:'smooth'}), 50); 
+                };
+                container.insertBefore(item, container.firstChild);
+            }
+            item.innerHTML = isLoading ? 
+                `<div><span class="text-sm font-semibold">${cleanSym}</span></div><div class="loader w-3 h-3 border-gray-300 border-t-maroon"></div>` : 
+                `<div><span class="mr-2 text-xs opacity-50">${icon}</span><span class="text-sm font-semibold">${cleanSym}</span></div><div class="text-right"><span class="font-mono text-sm">${price}</span><button onclick="event.stopPropagation(); removeStock('${sym}')" class="delete-btn opacity-0 group-hover:opacity-100 text-[10px] text-red-500 uppercase ml-2">Del</button></div>`;
+        }
+
+        function renderErrorCard(sym, msg) {
+            const qty = portfolio[sym].qty || 0;
+            const containerId = qty > 0 ? 'view-portfolio' : 'view-watchlist';
+            const container = document.getElementById(containerId);
+            let card = document.getElementById(`card-${sym}`);
+            if (!card) {
+                card = document.createElement('div');
+                card.id = `card-${sym}`;
+                container.appendChild(card);
+            }
+            card.innerHTML = `<div class="flex flex-col items-center justify-center h-full p-6 text-center"><span class="text-red-400 font-bold mb-1">Failed</span><span class="text-xs text-gray-400 mb-4 break-words w-full px-4">${msg || "Proxy Error"}</span><button onclick="fetchAsset('${sym}')" class="px-3 py-1 bg-white border border-red-200 text-red-500 text-xs rounded hover:bg-red-50 mb-2">Retry</button><button onclick="removeStock('${sym}')" class="text-xs text-gray-400 underline">Remove</button></div>`;
+            const item = document.getElementById(`wl-${sym}`);
+            if(item) item.innerHTML = `<span class="text-sm font-semibold text-gray-400">${cleanTicker(sym)}</span><span class="text-xs text-red-500">Error</span>`;
+        }
+
+        // --- CORE FUNCTIONS ---
+        function processInput() {
+            const input = document.getElementById('stockInput');
+            const val = input.value.trim().toUpperCase();
+            if(!val) return;
+            const symbols = val.split(',').map(s => s.trim()).filter(s => s);
+            input.value = '';
+            document.getElementById('empty-watchlist').classList.add('hidden');
+            document.getElementById('main-empty-state').classList.add('hidden');
+            symbols.forEach(rawSym => {
+                const sym = cleanTicker(rawSym); 
+                if(portfolio[sym]) return;
+                portfolio[sym] = { qty: 0, avg: 0 };
+                switchTab('watchlist'); 
+                renderWatchlistItem(sym, true);
+                createCardSkeleton(sym);
+                fetchAsset(sym);
+            });
+            saveState(); 
+        }
+
+        function removeStock(sym) {
+            delete portfolio[sym]; delete livePrices[sym]; delete stockAnalysis[sym];
+            const w = document.getElementById(`wl-${sym}`);
+            const c = document.getElementById(`card-${sym}`);
+            if(w) w.remove(); if(c) c.remove();
+            saveState();
+        }
+
+        function clearAll() {
+            if(confirm("Clear All?")) {
+                portfolio = {}; livePrices = {}; stockAnalysis = {};
+                document.getElementById('watchlist-container').innerHTML = `<div id="empty-watchlist" class="p-8 text-center text-gray-400 text-sm italic">Add stocks...</div>`;
+                document.getElementById('view-portfolio').innerHTML = '';
+                document.getElementById('view-watchlist').innerHTML = '';
+                document.getElementById('main-empty-state').classList.remove('hidden');
+                saveState();
+            }
+        }
+
+        function handleEnter(e) { if(e.key === "Enter") processInput(); }
+        function updateReqCount() { document.getElementById('requestCounter').style.display = activeRequests > 0 ? 'block' : 'none'; }
+        
+        window.updateHolding = function(sym, field, val) { 
+            if(!portfolio[sym]) return; 
+            const oldQty = portfolio[sym].qty;
+            portfolio[sym][field] = parseFloat(val) || 0; 
+            
+            if (field === 'qty') {
+                const newQty = portfolio[sym].qty;
+                if ((oldQty === 0 && newQty > 0) || (oldQty > 0 && newQty === 0)) {
+                    if (stockAnalysis[sym]) renderCard(sym, stockAnalysis[sym]);
+                    renderWatchlistItem(sym, false);
+                }
+            }
+            saveState(); 
+            updateCardPnL(sym); 
+            calculateTotals(); 
+        }
+
+        function updateCardPnL(sym) { if(!portfolio[sym] || !livePrices[sym]) return; const qty = portfolio[sym].qty; const avg = portfolio[sym].avg; const cur = livePrices[sym]; const pnl = (qty * cur) - (qty * avg); const el = document.getElementById(`pnl-${sym}`); if(el) { el.innerText = `₹${Math.round(pnl).toLocaleString()}`; el.className = `font-bold text-xs ${pnl >= 0 ? 'text-green-600' : 'text-red-500'}`; } }
+        function calculateTotals() { let tInv = 0, tCur = 0; for(let sym in portfolio) { if(livePrices[sym]) { const q = portfolio[sym].qty; tInv += q * portfolio[sym].avg; tCur += q * livePrices[sym]; } } const pnl = tCur - tInv; document.getElementById('total-value').innerText = `₹${Math.round(tCur).toLocaleString()}`; const pnlEl = document.getElementById('total-pnl'); pnlEl.innerText = `₹${Math.round(pnl).toLocaleString()}`; pnlEl.className = `font-bold text-lg leading-tight ${pnl >= 0 ? 'text-green-600' : 'text-red-500'}`; }
+        
+        function switchTab(tab) { 
+            activeTab = tab; 
+            saveState(false); 
+            const views = { 'portfolio': 'view-portfolio', 'watchlist': 'view-watchlist', 'summary': 'view-summary' };
+            const tabs = { 'portfolio': 'tab-portfolio', 'watchlist': 'tab-watchlist', 'summary': 'tab-summary' };
+            const es = document.getElementById('main-empty-state');
+
+            if(Object.keys(portfolio).length === 0) {
+                Object.values(views).forEach(id => document.getElementById(id).classList.add('hidden'));
+                es.classList.remove('hidden');
+                return;
+            } else {
+                es.classList.add('hidden');
+            }
+
+            Object.keys(views).forEach(key => {
+                const el = document.getElementById(views[key]);
+                const btn = document.getElementById(tabs[key]);
+                if (key === tab) {
+                    el.classList.remove('hidden');
+                    btn.className = "tab-active py-1 transition-colors flex items-center gap-2";
+                } else {
+                    el.classList.add('hidden');
+                    btn.className = "tab-inactive py-1 transition-colors flex items-center gap-2";
+                }
+            });
+            if(tab === 'summary') renderSignalSummary();
+        }
+
+        function renderSignalSummary() { const listBuy = document.getElementById('list-buy'); const listSip = document.getElementById('list-sip'); const listHold = document.getElementById('list-hold'); listBuy.innerHTML = ''; listSip.innerHTML = ''; listHold.innerHTML = ''; let counts = { BUY: 0, SIP: 0, HOLD: 0 }; Object.entries(stockAnalysis).forEach(([sym, data]) => { let cat = 'HOLD'; if(data.signal === 'BUY') cat = 'BUY'; if(data.type === 'FUND' || data.type === 'ETF') cat = 'SIP'; else if(data.signal === 'SELL' || data.signal === 'AVOID') cat = 'HOLD'; counts[cat]++; const li = document.createElement('div'); li.className = "p-2 bg-gray-50 rounded mb-1 flex justify-between text-xs"; li.innerHTML = `<span class="font-bold">${data.name}</span><span>₹${data.price.toLocaleString()}</span>`; if(cat === 'BUY') listBuy.appendChild(li); else if(cat === 'SIP') listSip.appendChild(li); else listHold.appendChild(li); }); document.getElementById('count-buy').innerText = counts.BUY; document.getElementById('count-sip').innerText = counts.SIP; document.getElementById('count-hold').innerText = counts.HOLD; }
+        
+        function updateViewCounts() {
+            let portCount = 0;
+            let watchCount = 0;
+            Object.values(portfolio).forEach(p => {
+                if (p.qty > 0) portCount++;
+                else watchCount++;
+            });
+            document.getElementById('watchlist-count').innerText = `${Object.keys(portfolio).length} / 50`;
+            document.getElementById('badge-port-count').innerText = portCount;
+            document.getElementById('badge-watch-count').innerText = watchCount;
+            
+            document.getElementById('portfolio-empty').style.display = portCount === 0 ? 'flex' : 'none';
+            document.getElementById('watchlist-empty').style.display = watchCount === 0 ? 'flex' : 'none';
+        }
+
+        // --- EXTENSIONS ---
+        
+        function calculateConviction(fScore, pScore) {
+            if (pScore) {
+                const avg = (fScore.total + pScore.total) / 2;
+                if (avg >= 60) return "Strong";
+                if (avg <= 40) return "Weak";
+                return "Stable";
+            }
+            if (fScore.total >= 65) return "Strong";
+            if (fScore.total <= 40) return "Weak";
+            return "Stable";
+        }
+
+        function getConvictionBadge(label) {
+            if (!label) return '';
+            const styles = { 'Strong': 'bg-emerald-100 text-emerald-800 border-emerald-200', 'Stable': 'bg-amber-100 text-amber-800 border-amber-200', 'Weak': 'bg-rose-100 text-rose-800 border-rose-200' };
+            return `<span class="text-[9px] font-bold px-1.5 py-0.5 rounded border ${styles[label]} uppercase tracking-wider mx-1">${label}</span>`;
+        }
+
+        function calculateTrajectory(data) {
+            if (data.type !== 'STOCK') return null;
+            const sales = data.growth || 0; const profit = data.profitGrowth || 0; const roe = data.roe || 0;
+            if (sales < 0 || profit < 0) return "Deteriorating";
+            if (profit < 5 && sales < 5) return "Deteriorating"; 
+            if (profit > sales && sales > 5 && profit > 10) return "Improving";
+            if (roe > 20 && profit > 10) return "Improving";
+            return "Flat";
+        }
+
+        function getTrajectoryBadge(label) {
+            if (!label) return '';
+            const styles = { 'Improving': 'bg-indigo-100 text-indigo-800 border-indigo-200', 'Flat': 'bg-gray-100 text-gray-600 border-gray-200', 'Deteriorating': 'bg-orange-100 text-orange-800 border-orange-200' };
+            return `<span class="text-[9px] font-bold px-1.5 py-0.5 rounded border ${styles[label]} uppercase tracking-wider mx-1">${label}</span>`;
+        }
+
+        function calculateTiming(data) {
+            const price = data.price || 0; const r1y = data.returns?.r1y || 0; const r3y = data.returns?.r3y || 0; const ma200 = data.technicals?.ma200 || 0;
+            let trend = 'Neutral';
+            if (ma200 > 0) trend = price > ma200 ? 'Up' : 'Down';
+            else { if (r1y > 10) trend = 'Up'; else if (r1y < -5) trend = 'Down'; }
+            let momentum = 'Stable';
+            if (r1y > r3y + 5) momentum = 'Improving'; else if (r1y < r3y - 5) momentum = 'Weakening';
+            if (trend === 'Up' && momentum === 'Improving') return "Favourable";
+            if (trend === 'Down' && momentum === 'Weakening') return "Unfavourable";
+            if (trend === 'Up' && momentum === 'Weakening') return "Neutral";
+            if (trend === 'Down' && momentum === 'Improving') return "Neutral";
+            if (r1y > 0) return "Neutral";
+            return "Unfavourable";
+        }
+
+        function getTimingBadge(label) {
+            if (!label) return '';
+            const styles = { 'Favourable': 'bg-teal-100 text-teal-800 border-teal-200', 'Neutral': 'bg-slate-100 text-slate-600 border-slate-200', 'Unfavourable': 'bg-red-100 text-red-800 border-red-200' };
+            return `<span class="text-[9px] font-bold px-1.5 py-0.5 rounded border ${styles[label]} uppercase tracking-wider mx-1">TIMING: ${label}</span>`;
+        }
+
+        function calculateFundamentalTiming(data) {
+            if (data.type !== 'STOCK') return null;
+            const profitGrowth = data.profitGrowth || 0; const pe = data.pe || 0; const r1y = data.returns?.r1y || 0;
+            if (r1y > 100 || (pe > 60 && profitGrowth < 10) || profitGrowth < 0) return "Late";
+            if ((profitGrowth > 15 && r1y < 5) || (pe > 0 && pe < 15 && profitGrowth > 5)) return "Early";
+            if (profitGrowth > 5 && r1y >= 5 && r1y <= 80) return "Optimal";
+            return r1y > 0 ? "Optimal" : "Early";
+        }
+
+        function getFundamentalTimingBadge(label) {
+            if (!label) return '';
+            const styles = { 'Early': 'bg-sky-100 text-sky-800 border-sky-200', 'Optimal': 'bg-lime-100 text-lime-800 border-lime-200', 'Late': 'bg-red-50 text-red-600 border-red-200' };
+            return `<span class="text-[9px] font-bold px-1.5 py-0.5 rounded border ${styles[label]} uppercase tracking-wider mx-1">${label}</span>`;
+        }
+
+        function calculateTrajectoryScore(data) {
+            if (data.type !== 'STOCK') return 0;
+            const sales3Y = data.growth || 0; const profit3Y = data.profitGrowth || 0; const roe = data.roe || 0; const roce = data.roce || 0; const r3y = data.returns?.r3y || 0; const r5y = data.returns?.r5y || 0;
+            let score = 0;
+            if (sales3Y > 10 && profit3Y > 10) score += 5;
+            if (profit3Y > sales3Y && sales3Y > 0) score += 5;
+            if (roe > 15 && roce > 15) score += 5;
+            if (r3y > 12 && r5y > 12) score += 5;
+            return score;
+        }
+
+        function calculateRelativeStrength(data) {
+            if (data.type !== 'STOCK') return 0;
+            const roe = data.roe || 0; const roce = data.roce || 0; const profitGrowth = data.profitGrowth || 0; const opm = data.opm || 0; const name = data.name || "";
+            const isFinancial = (roce < 12 && roe > 15) || (name.toUpperCase().includes("FINANCE") || name.toUpperCase().includes("BANK") || name.toUpperCase().includes("CAPITAL"));
+            let medianEfficiency = isFinancial ? 13 : 15; let medianGrowth = isFinancial ? 12 : 10; let medianMargin = isFinancial ? 0 : 14;
+            let score = 0;
+            const efficiencyMetric = isFinancial ? roe : roce;
+            if (efficiencyMetric > medianEfficiency * 1.2) score += 5; else if (efficiencyMetric > medianEfficiency) score += 2; else if (efficiencyMetric < medianEfficiency * 0.8) score -= 5; else score -= 2;
+            if (isFinancial) { if (profitGrowth > medianGrowth * 1.2) score += 5; else if (profitGrowth > medianGrowth) score += 2; else if (profitGrowth < medianGrowth * 0.8) score -= 5; else score -= 2; } 
+            else { let subScore = 0; if (profitGrowth > medianGrowth) subScore += 2.5; else subScore -= 2.5; if (opm > medianMargin) subScore += 2.5; else subScore -= 2.5; score += Math.round(subScore); }
+            return Math.max(-10, Math.min(10, score));
+        }
+
+        function calculateFinalDecision(conviction, trajectory, timing, type, isHeld) {
+            let action = isHeld ? "HOLD" : "WAIT";
+            let summary = "";
+            const isFund = type !== 'STOCK';
+            const effTrajectory = isFund ? (timing === 'Favourable' ? 'Improving' : 'Flat') : trajectory;
+
+            if (conviction === 'Weak') {
+                if (isHeld) { action = "EXIT"; summary = "Fundamental thesis has deteriorated significantly. Risks outweigh rewards."; } 
+                else { action = "AVOID"; summary = "Quality does not meet the threshold for investment. Look elsewhere."; }
+            }
+            else if (conviction === 'Strong') {
+                if (effTrajectory === 'Deteriorating') {
+                    if (isHeld) { action = "REVIEW"; summary = "Fundamentals are strong but momentum is fading. Watch closely."; } 
+                    else { action = "WAIT"; summary = "Great company, but business momentum is slowing. Wait for stabilization."; }
+                } else if (timing === 'Late') {
+                    if (isHeld) { action = "HOLD"; summary = "Expensive, but quality is high. Ride the trend, but don't add aggressively."; } 
+                    else { action = "WAIT"; summary = "Fundamentals are great, but the price is extended. Wait for a dip."; }
+                } else {
+                    if (isHeld) { action = "ADD"; summary = "Everything aligns: Quality, Growth, and Trend. Good level to increase allocation."; } 
+                    else { action = "BUY NOW"; summary = "Prime setup: High conviction matched with accelerating business performance."; }
+                }
+            }
+            else { 
+                if (effTrajectory === 'Deteriorating') {
+                    if (isHeld) action = "REDUCE"; else action = "AVOID";
+                    summary = "Business stability is threatened by slowing growth trends.";
+                } else if (timing === 'Unfavourable') {
+                    if (isHeld) { action = "HOLD"; summary = "Price is weak, but business is stable. No urgency to exit yet."; } 
+                    else { action = "WAIT"; summary = "Stable business, but negative price trend. Wait for support."; }
+                } else {
+                    if (isHeld) { action = "HOLD"; summary = "A steady performer. Continue holding for consistent compounding."; } 
+                    else { action = "SIP ONLY"; summary = "Decent stability warrants a small, staggered allocation approach."; }
+                }
+            }
+            return { action, summary };
+        }
+
+        function getDecisionBlock(decision, confidence) {
+            const colors = { 'BUY NOW': 'bg-green-50 border-green-200 text-green-800', 'ADD': 'bg-emerald-50 border-emerald-200 text-emerald-800', 'SIP ONLY': 'bg-blue-50 border-blue-200 text-blue-800', 'HOLD': 'bg-indigo-50 border-indigo-200 text-indigo-800', 'WAIT': 'bg-orange-50 border-orange-200 text-orange-800', 'REVIEW': 'bg-yellow-50 border-yellow-200 text-yellow-800', 'REDUCE': 'bg-amber-50 border-amber-200 text-amber-800', 'EXIT': 'bg-red-50 border-red-200 text-red-800', 'AVOID': 'bg-slate-50 border-slate-200 text-slate-600' };
+            const colorClass = colors[decision.action] || 'bg-gray-50 border-gray-200';
+            
+            // Confidence Style
+            const confColors = { 'High': 'text-green-600', 'Medium': 'text-yellow-600', 'Low': 'text-red-600' };
+            const confColor = confColors[confidence] || 'text-gray-400';
+
+            return `<div class="mt-3 pt-3 border-t border-dashed border-gray-200">
+                <div class="flex items-center justify-between mb-1">
+                    <div class="flex items-center gap-2">
+                        <span class="text-[9px] font-bold text-gray-400 uppercase tracking-widest">Final Verdict</span>
+                        <span class="text-[8px] font-mono ${confColor}" title="Data Confidence">(${confidence} Conf.)</span>
+                    </div>
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded border ${colorClass}">${decision.action}</span>
+                </div>
+                <p class="text-[10px] text-gray-500 italic leading-relaxed">"${decision.summary}"</p>
+            </div>`;
+        }
+
+        function calculateScoreActionMapper(score, timing, conviction, isHeld) {
+            let strength = "Moderate";
+            if (score >= 65) strength = "Strong"; else if (score <= 40) strength = "Weak";
+            let s1 = `The fundamentals are ${strength.toLowerCase()} and the timing appears ${timing ? timing.toLowerCase() : 'neutral'}.`;
+            let s2 = "", s3 = "";
+            if (strength === "Strong") {
+                if (timing === "Optimal" || timing === "Early") { s2 = "This alignment suggests high conviction with a supportive entry price."; s3 = isHeld ? "Consider adding to this winning position." : "It is a prime setup to deploy capital aggressively."; } 
+                else { s2 = "However, the price has extended far beyond the ideal entry zone."; s3 = isHeld ? "Hold and ride the trend, but avoid fresh aggressive buying." : "Wait for a meaningful correction to improve the safety margin."; }
+            } else if (strength === "Moderate") {
+                if (timing === "Optimal") { s2 = "While not exceptional, the valuation offers a decent safety net."; s3 = isHeld ? "Keep holding, but monitor for better opportunities." : "A small, staggered allocation is appropriate here."; } 
+                else { s2 = "Lacking both superior quality and perfect timing, the edge is thin."; s3 = isHeld ? "Review position size; upsides may be capped." : "It is better to remain on the sidelines for now."; }
+            } else { 
+                s2 = "The core business metrics do not support a long-term investment case."; s3 = "Capital preservation is priority; " + (isHeld ? "plan an exit strategy." : "avoid this counter.");
+            }
+            return `${s1} ${s2} ${s3}`;
+        }
+
+        function calculateMoreshwarLevels(price, fScore, pScore, isHolding) {
+            const scoreSum = pScore ? (fScore.total + pScore.total) : fScore.total;
+            const count = pScore ? 2 : 1;
+            const X = Math.round(scoreSum / count); 
+            const Y = price;
+            let result = { target: null, sl: null, entry: null };
+            if (isHolding) { result.target = Y + X; result.sl = Y - (100 - X); } 
+            else { const offset = 100 - X; result.entry = Y - offset; }
+            return result;
+        }
+
+        function getMoreshwarBlock(price, fScore, pScore, isHolding, decisionAction) {
+            const showFor = ['BUY NOW', 'SIP ONLY', 'ADD', 'AVOID', 'WAIT'];
+            if (!isHolding && !showFor.includes(decisionAction)) return '';
+            const levels = calculateMoreshwarLevels(price, fScore, pScore, isHolding);
+            let html = `<div class="mt-2 pt-2 border-t border-gray-100 flex justify-between items-center text-[10px] font-mono text-gray-600 bg-gray-50/50 p-2 rounded">`;
+            if (isHolding) { html += `<div class="flex flex-col"><span class="text-[8px] text-gray-400 uppercase">Target (Y+X)</span><span class="font-bold text-green-600">₹${levels.target.toLocaleString()}</span></div><div class="flex flex-col text-right"><span class="text-[8px] text-gray-400 uppercase">Stop-loss (Price-Risk)</span><span class="font-bold text-red-600">₹${levels.sl.toLocaleString()}</span></div>`; } 
+            else { 
+                let label = "Entry Price"; let valColor = "text-blue-600";
+                if (decisionAction === 'AVOID' || decisionAction === 'WAIT') { label = "Avoid Till"; valColor = "text-orange-500"; }
+                html += `<div class="flex flex-col w-full text-center"><span class="text-[8px] text-gray-400 uppercase">${label}</span><span class="font-bold ${valColor}">₹${levels.entry.toLocaleString()}</span></div>`; 
+            }
+            html += `</div>`;
+            return html;
+        }
+
+        // --- EXTENSION MODULE: SCORE NORMALIZATION ENGINE ---
+        function calculateNormalizedScore(rawScore) {
+            // Raw score can exceed 100 (e.g. 100 fund + 20 traj + 10 RS = 130)
+            // Logic: Linear up to 60, then logarithmic curve to soft-cap near 99
+            
+            if (rawScore <= 60) return Math.max(0, rawScore);
+            
+            // For inputs > 60, map to 60-99
+            // Formula: 60 + (MaxAdd * (1 - e^(-rate * (raw - 60))))
+            // Using MaxAdd = 39 (to cap at 99), Rate optimized for spread
+            
+            const excess = rawScore - 60;
+            const normalizedExcess = 39 * (1 - Math.exp(-0.035 * excess));
+            
+            return Math.round(60 + normalizedExcess);
+        }
+        
+        function calculateDataConfidence(data) {
+            let score = 3; // 3=High, 2=Medium, 1=Low
+
+            // 1. Data Completeness
+            if (data.type === 'STOCK') {
+                if (data.source === 'Google') score -= 2; // Google data is very limited for stocks
+                else {
+                    if (!data.profitGrowth && !data.growth) score--; // Missing growth metrics
+                    if (!data.roe && !data.roce) score--; // Missing return metrics
+                }
+                if (!data.returns?.r3y) score--; // Short history (IPO?)
+            } else {
+                // Funds
+                if (!data.returns?.r3y || !data.returns?.r5y) score--;
+            }
+
+            // 2. Consistency Checks
+            // Example: Price doubling but profit halving
+            const r1y = data.returns?.r1y || 0;
+            const profitGrowth = data.profitGrowth || 0;
+            if (r1y > 100 && profitGrowth < -20) score--; 
+
+            if (score >= 3) return "High";
+            if (score === 2) return "Medium";
+            return "Low";
+        }
+    </script>
+</body>
+</html>
