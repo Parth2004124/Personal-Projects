@@ -64,7 +64,7 @@
         .analysis-tab.inactive:hover { background: #f9fafb; color: #4b5563; }
     </style>
 </head>
-<body class="h-screen flex flex-col md:flex-row overflow-hidden text-gray-800" onload="initApp()">
+<body class="h-screen flex flex-col md:flex-row overflow-hidden text-gray-800">
 
     <!-- SIDEBAR -->
     <aside class="w-full md:w-80 bg-white border-r border-gray-200 flex flex-col z-20 shadow-lg shrink-0 h-1/3 md:h-full">
@@ -163,37 +163,61 @@
             </div>
         </div>
 
-        <!-- TAB 3: PORTFOLIO SUMMARY (Previously Signals) -->
-        <!-- // PORTFOLIO-PANE: Structural reallocation - Preserved dimensions, new content placeholders -->
-        <div id="view-summary" class="hidden p-4 md:p-6 grid grid-cols-1 md:grid-cols-3 gap-6 h-full items-start">
+        <!-- TAB 3: PORTFOLIO SUMMARY -->
+        <div id="view-summary" class="hidden p-4 md:p-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 h-full items-start">
             <!-- COL 1: Allocation -->
-            <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden h-full min-h-[200px]">
-                <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-                    <h3 class="text-gray-800 font-bold text-sm uppercase">Asset Allocation</h3>
+            <div class="bg-gradient-to-br from-indigo-50 to-white rounded-lg border border-indigo-100 shadow-sm overflow-hidden h-fit flex flex-col">
+                <div class="px-5 py-4 border-b border-indigo-100/50 flex justify-between items-center">
+                    <h3 class="text-indigo-900 font-bold text-sm uppercase tracking-wide">Asset Allocation</h3>
+                    <div class="p-1.5 bg-indigo-100 rounded-full text-indigo-600">
+                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"></path></svg>
+                    </div>
                 </div>
-                <div id="analytics-allocation" class="p-6 text-center text-gray-400 text-xs italic flex flex-col items-center justify-center h-40">
-                    <div class="loader mx-auto mb-2"></div>
-                    Waiting for analytics...
+                <div id="analytics-allocation" class="p-6 flex-1 flex flex-col justify-center">
+                    <div class="loader mx-auto mb-2 border-indigo-200 border-t-indigo-600"></div>
+                    <span class="text-xs text-indigo-400 text-center">Analyzing...</span>
                 </div>
             </div>
+            
             <!-- COL 2: Performance -->
-            <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden h-full min-h-[200px]">
-                <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-                    <h3 class="text-gray-800 font-bold text-sm uppercase">Performance & Efficiency</h3>
+            <div class="bg-gradient-to-br from-emerald-50 to-white rounded-lg border border-emerald-100 shadow-sm overflow-hidden h-fit flex flex-col">
+                 <div class="px-5 py-4 border-b border-emerald-100/50 flex justify-between items-center">
+                    <h3 class="text-emerald-900 font-bold text-sm uppercase tracking-wide">Performance</h3>
+                     <div class="p-1.5 bg-emerald-100 rounded-full text-emerald-600">
+                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+                    </div>
                 </div>
-                <div id="analytics-performance" class="p-6 text-center text-gray-400 text-xs italic flex flex-col items-center justify-center h-40">
-                    <div class="loader mx-auto mb-2"></div>
-                    Waiting for analytics...
+                <div id="analytics-performance" class="p-6 flex-1 flex flex-col justify-center">
+                     <div class="loader mx-auto mb-2 border-emerald-200 border-t-emerald-600"></div>
+                     <span class="text-xs text-emerald-400 text-center">Calculating...</span>
                 </div>
             </div>
-            <!-- COL 3: Risk/Health -->
-            <div class="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden h-full min-h-[200px]">
-                <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
-                    <h3 class="text-gray-800 font-bold text-sm uppercase">Portfolio Health & Risk</h3>
+            
+            <!-- COL 3: Health -->
+            <div class="bg-gradient-to-br from-amber-50 to-white rounded-lg border border-amber-100 shadow-sm overflow-hidden h-fit flex flex-col">
+                <div class="px-5 py-4 border-b border-amber-100/50 flex justify-between items-center">
+                    <h3 class="text-amber-900 font-bold text-sm uppercase tracking-wide">Portfolio Health</h3>
+                     <div class="p-1.5 bg-amber-100 rounded-full text-amber-600">
+                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </div>
                 </div>
-                <div id="analytics-health" class="p-4 text-center text-gray-400 text-xs italic h-full">
-                    <div class="loader mx-auto mb-2"></div>
-                    Waiting for analytics...
+                <div id="analytics-health" class="p-6 flex-1 flex flex-col justify-center">
+                     <div class="loader mx-auto mb-2 border-amber-200 border-t-amber-600"></div>
+                     <span class="text-xs text-amber-400 text-center"> diagnosing...</span>
+                </div>
+            </div>
+
+            <!-- COL 4: Actions (PORTFOLIO-SUMMARY) -->
+            <div class="bg-gradient-to-br from-violet-50 to-white rounded-lg border border-violet-100 shadow-sm overflow-hidden h-fit flex flex-col">
+                <div class="px-5 py-4 border-b border-violet-100/50 flex justify-between items-center">
+                    <h3 class="text-violet-900 font-bold text-sm uppercase tracking-wide">Action Plan</h3>
+                    <div class="p-1.5 bg-violet-100 rounded-full text-violet-600">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                    </div>
+                </div>
+                <div id="analytics-actions" class="p-6 flex-1 flex flex-col gap-2">
+                    <div class="loader mx-auto mb-2 border-violet-200 border-t-violet-600"></div>
+                    <span class="text-xs text-violet-400 text-center">Scanning...</span>
                 </div>
             </div>
         </div>
@@ -217,7 +241,7 @@
         let saveTimeout = null;
         let isOfflineMode = false;
         let activeRequests = 0;
-        let portfolioAnalytics = { healthScore: 0, scoredValue: 0, totalValue: 0, allocation: {}, risk: {}, efficiency: [] }; // CAPITAL-EFFICIENCY: Added efficiency array
+        let portfolioAnalytics = { healthScore: 0, scoredValue: 0, totalValue: 0, allocation: {}, risk: {}, efficiency: [] };
         
         // --- KEYS FILTER ---
         const BLACKLIST_KEYS = ['status', 'message', 'result', 'sync-ts', 'sync_ts', 'version', 'timestamp'];
@@ -226,43 +250,36 @@
         const INDUSTRY_PROFILES = {
             'BANKING': { 
                 keywords: ['BANK', 'FINANCE', 'CAPITAL', 'HOLDINGS', 'INVEST', 'BAJAJ', 'HDFC', 'ICICI', 'KOTAK', 'AXIS', 'SBI', 'CHOLA', 'MUTHOOT'], 
-                // Banks rely on ROE/Growth. OPM is often irrelevant/volatile. Risk is usually higher due to leverage.
                 weights: { business: 1.1, moat: 1.2, management: 1.0, risk: 0.9 }, 
                 required: ['roe'] 
             },
             'IT': { 
                 keywords: ['TECH', 'INFOSYS', 'TCS', 'WIPRO', 'HCL', 'MINDTREE', 'LTIM', 'PERSISTENT', 'COFORGE', 'SYSTEMS', 'SOFTWARE', 'DATA'], 
-                // IT is cash-rich (low risk), margin-focused.
                 weights: { business: 1.2, moat: 1.0, management: 1.1, risk: 1.0 }, 
                 required: ['opm'] 
             },
             'FMCG': { 
                 keywords: ['HUL', 'NESTLE', 'BRITANNIA', 'DABUR', 'GODREJ', 'MARICO', 'TATA CONSUMER', 'ITC', 'FOODS', 'CONSUMER', 'VARUN'],
-                // High moat/brand value, lower growth.
-                weights: { business: 1.0, moat: 1.3, management: 1.1, risk: 1.0 },
+                weights: { business: 1.0, moat: 1.3, management: 1.1, risk: 1.0 }, 
                 required: ['roce']
             },
             'PHARMA': { 
                 keywords: ['PHARMA', 'LAB', 'DRUG', 'REDDY', 'SUN', 'CIPLA', 'DIVIS', 'LUPIN', 'ALKEM', 'TORRENT'],
-                // R&D risk, regulatory risk.
                 weights: { business: 1.1, moat: 1.0, management: 1.0, risk: 0.9 },
                 required: []
             },
             'AUTO': {
                 keywords: ['MOTOR', 'AUTO', 'MARUTI', 'MAHINDRA', 'TATA MOTORS', 'EICHER', 'BAJAJ AUTO', 'TVS'],
-                // Cyclical.
                 weights: { business: 1.2, moat: 0.9, management: 1.0, risk: 0.9 },
                 required: []
             },
             'POWER': {
                 keywords: ['POWER', 'ENERGY', 'NTPC', 'ADANI', 'GRID', 'TATA POWER', 'NHPC', 'JSW ENERGY'],
-                // Asset heavy, debt heavy.
                 weights: { business: 1.0, moat: 1.2, management: 0.9, risk: 0.8 },
                 required: []
             },
             'REAL_ESTATE': {
                 keywords: ['REALTY', 'DLF', 'GODREJ PROP', 'OBEROI', 'PRESTIGE', 'LODHA', 'MACROTECH'],
-                // High beta, cyclical.
                 weights: { business: 1.1, moat: 0.8, management: 1.0, risk: 0.8 },
                 required: []
             },
@@ -279,19 +296,18 @@
             return sym.replace(/\.NS$/, '').replace(/\.BO$/, '').replace(/:NSE$/, '').replace(/:BSE$/, '');
         }
 
-        // Sanitizer Function to remove metadata keys
+        function getDisplayName(sym) {
+            return stockAnalysis[sym]?.name || cleanTicker(sym);
+        }
+
         function sanitizePortfolio(raw) {
             const clean = {};
             if (!raw) return clean;
             Object.keys(raw).forEach(key => {
                 const k = key.toLowerCase();
-                // Filter 1: Check against blacklist
                 if (BLACKLIST_KEYS.includes(k)) return;
-                // Filter 2: Check if value is object (valid stock data)
                 if (typeof raw[key] !== 'object' || raw[key] === null) return;
-                // Filter 3: Check typical ticker structure (optional but safer)
                 if (key.length > 20 || key.includes(' ')) return; 
-                
                 clean[key] = raw[key];
             });
             return clean;
@@ -315,25 +331,20 @@
         function calculateMFReturns(history) {
             if(!history || !Array.isArray(history) || history.length < 10) return { r1y:0, r3y:0, r5y:0 };
             const now = parseFloat(history[0].nav);
-            
             const parseDate = (dStr) => { 
                 const [d, m, y] = dStr.split('-'); 
                 return new Date(`${y}-${m}-${d}`); 
             };
-
             const findNavAgo = (years) => {
                 const targetDate = new Date();
                 targetDate.setFullYear(targetDate.getFullYear() - years);
                 const entry = history.find(h => parseDate(h.date) <= targetDate);
                 return entry ? parseFloat(entry.nav) : null;
             };
-
             const r1yNav = findNavAgo(1); 
             const r3yNav = findNavAgo(3); 
             const r5yNav = findNavAgo(5);
-
             const cagr = (end, start, years) => ((Math.pow(end/start, 1/years) - 1) * 100);
-
             return { 
                 r1y: r1yNav ? cagr(now, r1yNav, 1) : 0, 
                 r3y: r3yNav ? cagr(now, r3yNav, 3) : 0, 
@@ -390,13 +401,31 @@
                 const mcap = data.mcap || 0; 
                 const beta = data.beta || 1.0;
                 const ret1y = data.returns?.r1y || 0;
+                const name = (data.name || '').toUpperCase();
 
-                const isFinancial = (roce < 12 && roe > 15) || (data.name && (data.name.toUpperCase().includes("FINANCE") || data.name.toUpperCase().includes("BANK") || data.name.toUpperCase().includes("CAPITAL")));
+                // TATA MOTORS FIX: Tighten financial detection to exclude manufacturing giants
+                const isAutoOrPower = name.includes("MOTORS") || name.includes("AUTO") || name.includes("POWER") || name.includes("ENERGY") || name.includes("STEEL");
+                const isFinancial = !isAutoOrPower && ((roce < 12 && roe > 15) || (name.includes("FINANCE") || name.includes("BANK") || name.includes("CAPITAL") || name.includes("HOLDINGS")));
                 
-                if (salesGrowth > 15) scores.business += 15; else if (salesGrowth > 8) scores.business += 10; else if (salesGrowth > 0) scores.business += 5;
-                if (profitGrowth > 15) scores.business += 15; else if (profitGrowth > 8) scores.business += 10; else if (profitGrowth > 0) scores.business += 5;
-                if (isFinancial) { if (roe > 15) scores.business += 10; else if (roe > 10) scores.business += 5; }
-                else { if (opm > 20) scores.business += 10; else if (opm > 12) scores.business += 5; }
+                // Sales Growth
+                if (salesGrowth > 15) scores.business += 15; 
+                else if (salesGrowth > 8) scores.business += 10; 
+                else if (salesGrowth > 0) scores.business += 5;
+                else if (salesGrowth > -10) { scores.business += 2; reasons.push("Sales Drag"); }
+
+                // Profit Growth
+                if (profitGrowth > 15) scores.business += 15; 
+                else if (profitGrowth > 8) scores.business += 10; 
+                else if (profitGrowth > 0) scores.business += 5;
+                else if (profitGrowth > -20) { scores.business += 2; reasons.push("Profit Drag"); }
+
+                if (isFinancial) { 
+                    if (roe > 15) scores.business += 10; else if (roe > 10) scores.business += 5; else if (roe > 5) scores.business += 2;
+                } else { 
+                    if (opm > 20) scores.business += 10; 
+                    else if (opm > 12) scores.business += 5;
+                    else if (opm > 8) { scores.business += 2; reasons.push("Low Margin"); }
+                }
                 scores.business = Math.min(40, scores.business);
 
                 if (isFinancial) { if (roe > 18) scores.moat += 8; else if (roe > 12) scores.moat += 5; }
@@ -410,12 +439,20 @@
                     if (pe < 15 && (profitGrowth > 10 || roe > 15)) scores.management += 20; 
                     else if (pe < 25) scores.management += 10;
                     else if (pe < 60) scores.management += 5;
+                } else {
+                    if (mcap > 50000) { scores.management += 10; reasons.push("Turnaround Giant"); }
+                    else if (mcap > 10000) { scores.management += 5; reasons.push("Recovering"); }
                 }
                 scores.management = Math.min(20, scores.management);
 
-                if (mcap > 5000) scores.risk += 10; else if (mcap > 2000) scores.risk += 5;
+                // MINIMUM CAPS LOGIC
+                if (mcap > 0) {
+                    if (mcap < 500) { scores.risk -= 10; reasons.push("Micro Cap Risk"); } 
+                    else if (mcap > 5000) scores.risk += 10; 
+                    else if (mcap > 2000) scores.risk += 5;
+                }
                 if (ret1y > 40) scores.risk += 10; else { if (beta < 1.1) scores.risk += 10; else if (beta < 1.3) scores.risk += 5; }
-                scores.risk = Math.min(20, scores.risk);
+                scores.risk = Math.max(0, Math.min(20, scores.risk));
 
                 scores.total = scores.business + scores.moat + scores.management + scores.risk;
 
@@ -486,8 +523,6 @@
             const industry = detectIndustry(data);
             const profile = INDUSTRY_PROFILES[industry] || INDUSTRY_PROFILES['GENERAL'];
 
-            // 1. Check strict requirements (Insufficient Data logic)
-            // If the industry *requires* a metric (e.g. ROE for Banking) and it's missing, fail it.
             for (let metric of profile.required || []) {
                 if (data[metric] === null || data[metric] === undefined || data[metric] === 0) {
                      fScore.total = 0;
@@ -496,8 +531,6 @@
                 }
             }
 
-            // 2. Apply Component Weights
-            // This logic adheres to: "Use existing score outputs as inputs" and "Apply industry weights multiplicatively"
             const components = ['business', 'moat', 'management', 'risk'];
             
             components.forEach(comp => {
@@ -505,13 +538,10 @@
                 fScore[comp] = Math.round(fScore[comp] * w);
             });
 
-            // 3. Recalculate Total
             fScore.total = fScore.business + fScore.moat + fScore.management + fScore.risk;
             
-            // 4. Cap and Explain
             fScore.total = Math.min(99, fScore.total);
             if (industry !== 'GENERAL') {
-               // Append industry tag to explanation without overwriting existing critical info
                const suffix = `(${industry})`;
                if (!fScore.explanation.includes(suffix)) {
                    fScore.explanation = fScore.explanation ? `${fScore.explanation} ${suffix}` : suffix;
@@ -522,19 +552,20 @@
         }
 
         // --- PORTFOLIO AGGREGATION & RISK LAYER --- 
-        function calculatePortfolioAggregates() { // PORTFOLIO-AGGREGATE
+        function calculatePortfolioAggregates() {
             let totalVal = 0;
             let weightedScoreSum = 0;
             let scoredVal = 0;
             let distribution = { 'Equity': 0, 'Cash': 0, 'Mutual Funds': 0, 'ETF': 0 };
             
-            // PORTFOLIO-RISK: Tracking objects
             let industryExposure = {};
             let assetExposure = {};
             let topAssets = [];
             
-            // Reset state
-            portfolioAnalytics = { healthScore: 0, scoredValue: 0, totalValue: 0, allocation: {}, risk: { alerts: [], sectors: {}, divScore: 100 }, efficiency: [] }; // CAPITAL-EFFICIENCY: Added efficiency array
+            let weightedBetaSum = 0;
+            let betaEquityVal = 0;
+            
+            portfolioAnalytics = { healthScore: 0, scoredValue: 0, totalValue: 0, allocation: {}, risk: { alerts: [], sectors: {}, divScore: 100, sensitivity: 'Moderate' }, efficiency: [] };
 
             Object.keys(portfolio).forEach(sym => {
                 const qty = portfolio[sym].qty || 0;
@@ -544,13 +575,10 @@
                 const val = qty * price;
                 totalVal += val;
                 
-                // Track single asset exposure
                 assetExposure[sym] = val;
                 
-                // CAPITAL-EFFICIENCY: Init score
                 let currentScore = 0;
 
-                // Grab analysis data if available
                 const data = stockAnalysis[sym];
                 if (data) {
                     let type = 'Equity';
@@ -558,57 +586,59 @@
                     else if (data.type === 'FUND') type = 'Mutual Funds';
                     distribution[type] = (distribution[type] || 0) + val;
                     
-                    // PORTFOLIO-RISK: Track Industry Exposure
-                    // Treat Funds/ETFs as 'Diversified' unless we want to map them
                     let ind = 'DIVERSIFIED';
                     if (type === 'Equity') {
                         ind = detectIndustry(data);
+                        if (data.beta) {
+                            weightedBetaSum += data.beta * val;
+                            betaEquityVal += val;
+                        }
                     } else {
-                        // Optional: Map Sector ETFs if keywords match
                         if(data.name.includes("BANK")) ind = 'BANKING';
                         else if(data.name.includes("IT")) ind = 'IT';
+                        weightedBetaSum += 1.0 * val;
+                        betaEquityVal += val;
                     }
                     industryExposure[ind] = (industryExposure[ind] || 0) + val;
 
-                    // Re-calculate normalized score specifically for aggregation
-                    // to ensure we have the exact latest number
                     let fScore = calculateFundamentalScore(data);
                     if (fScore) {
                         fScore = normalizeFundamentalScore(fScore, data);
                         if (fScore.total > 0) {
-                            currentScore = fScore.total; // CAPITAL-EFFICIENCY: Capture score
+                            currentScore = fScore.total;
                             weightedScoreSum += fScore.total * val;
                             scoredVal += val;
                         }
                     }
                 } else {
-                    // Unscored asset (manual entry without fetch)
-                    distribution['Equity'] = (distribution['Equity'] || 0) + val; // Assume equity
+                    distribution['Equity'] = (distribution['Equity'] || 0) + val; 
                     industryExposure['GENERAL'] = (industryExposure['GENERAL'] || 0) + val;
                 }
                 
-                // CAPITAL-EFFICIENCY: Store in topAssets for 2nd pass
                 topAssets.push({ sym, val, score: currentScore });
             });
             
-            // Final Computations
             portfolioAnalytics.totalValue = totalVal;
             portfolioAnalytics.scoredValue = scoredVal;
             portfolioAnalytics.allocation = distribution;
             if (scoredVal > 0) {
                 portfolioAnalytics.healthScore = Math.round(weightedScoreSum / scoredVal);
             }
+            
+            if (betaEquityVal > 0) {
+                const portfolioBeta = weightedBetaSum / betaEquityVal;
+                if (portfolioBeta < 0.8) portfolioAnalytics.risk.sensitivity = 'Defensive';
+                else if (portfolioBeta > 1.2) portfolioAnalytics.risk.sensitivity = 'Aggressive';
+                else portfolioAnalytics.risk.sensitivity = 'Balanced';
+            }
 
-            // PORTFOLIO-RISK & CAPITAL-EFFICIENCY: Analysis Logic
             if (totalVal > 0) {
-                // 1. Sector/Industry Breaches
-                const MAX_SECTOR = 0.35; // 35%
-                const MAX_ASSET = 0.20; // 20%
+                const MAX_SECTOR = 0.35; 
+                const MAX_ASSET = 0.20; 
                 let divPenalty = 0;
 
-                // Sort industries by value
                 const sortedInds = Object.entries(industryExposure).sort((a,b) => b[1] - a[1]);
-                portfolioAnalytics.risk.sectors = sortedInds.slice(0, 3); // Top 3 for UI
+                portfolioAnalytics.risk.sectors = sortedInds.slice(0, 3); 
 
                 sortedInds.forEach(([ind, val]) => {
                     const pct = val / totalVal;
@@ -618,31 +648,28 @@
                     }
                 });
 
-                // 2. Asset Breaches & Efficiency Checks
                 topAssets.sort((a,b) => b.val - a.val);
                 topAssets.forEach(item => {
                     const pct = item.val / totalVal;
                     const pct100 = pct * 100;
+                    const name = getDisplayName(item.sym); 
                     
-                    // Risk: Single Asset Concentration
                     if (pct > MAX_ASSET) {
-                        portfolioAnalytics.risk.alerts.push(`Dominant Asset: ${cleanTicker(item.sym)} (${Math.round(pct100)}%)`);
+                        portfolioAnalytics.risk.alerts.push(`Dominant Asset: ${name} (${Math.round(pct100)}%)`);
                         divPenalty += (pct - MAX_ASSET) * 100;
                     }
                     
-                    // CAPITAL-EFFICIENCY: Deterministic Rules
-                    if (item.score > 0) { // Only scoreable assets
+                    if (item.score > 0) { 
                         if (item.score < 50 && pct100 > 10) {
-                            portfolioAnalytics.efficiency.push({ type: 'bad', text: `High Alloc in Weak Asset: ${cleanTicker(item.sym)}` });
+                            portfolioAnalytics.efficiency.push({ type: 'bad', text: `High Alloc in Weak Asset: ${name}` });
                         } else if (item.score > 70 && pct100 < 3) {
-                            portfolioAnalytics.efficiency.push({ type: 'good', text: `Under-allocated Winner: ${cleanTicker(item.sym)}` });
+                            portfolioAnalytics.efficiency.push({ type: 'good', text: `Under-allocated Winner: ${name}` });
                         } else if (item.score < 55 && pct100 < 2) {
-                            portfolioAnalytics.efficiency.push({ type: 'tail', text: `Low Conviction Tail: ${cleanTicker(item.sym)}` });
+                            portfolioAnalytics.efficiency.push({ type: 'tail', text: `Low Conviction Tail: ${name}` });
                         }
                     }
                 });
 
-                // 3. Concentration Score (Dominance)
                 if (topAssets.length > 0) {
                     const top3Val = topAssets.slice(0, 3).reduce((acc, curr) => acc + curr.val, 0);
                     const top3Pct = top3Val / totalVal;
@@ -652,7 +679,6 @@
                     }
                 }
 
-                // 4. Calculate Diversification Score (100 - penalties)
                 portfolioAnalytics.risk.divScore = Math.max(0, Math.round(100 - divPenalty));
             }
         }
@@ -661,7 +687,7 @@
         function saveState(pushToCloud = true) {
             const state = { portfolio: portfolio, analysis: stockAnalysis, activeTab: activeTab, cardViews: cardViews };
             localStorage.setItem('stockSightData', JSON.stringify(state));
-            calculateTotals(); // Updates aggregation
+            calculateTotals();
             updateViewCounts();
             if (activeTab === 'summary') renderSignalSummary();
 
@@ -673,9 +699,7 @@
             saveTimeout = setTimeout(async () => {
                 if (isOfflineMode) { updateCloudStatus('error', 'Offline'); return; }
                 try {
-                    // Sanitize before saving to ensure no metadata (like timestamps) is sent back to the sheet
                     const cleanPayload = sanitizePortfolio(portfolio);
-
                     const res = await fetch(SHEET_API_URL, {
                         method: 'POST',
                         body: JSON.stringify(cleanPayload),
@@ -711,9 +735,7 @@
             const robustData = localStorage.getItem('stockSightData');
             if (robustData) {
                 const state = JSON.parse(robustData);
-                // 1. Sanitize loaded data immediately
                 portfolio = sanitizePortfolio(state.portfolio) || {};
-                
                 stockAnalysis = state.analysis || {};
                 activeTab = state.activeTab || 'portfolio';
                 cardViews = state.cardViews || {};
@@ -761,7 +783,6 @@
                 if (cloudData.status === 'error') throw new Error(cloudData.message);
 
                 if (cloudData && Object.keys(cloudData).length > 0) {
-                    // 2. Sanitize Cloud Data (Remove 'sync-ts', 'status' etc)
                     portfolio = sanitizePortfolio(cloudData);
                     saveState(false); 
                     renderUI(); 
@@ -780,7 +801,6 @@
         function forceSync() { sessionStorage.removeItem('syncErrorShown'); performCloudSync(); }
 
         function renderUI() {
-            // STRICT FILTERING applied directly to the render loop
             const symbols = Object.keys(portfolio).filter(key => {
                 const k = key.toLowerCase();
                 return !BLACKLIST_KEYS.some(bad => k.includes(bad));
@@ -830,7 +850,6 @@
         const ETF_KEYWORDS = ['BEES', 'ETF', 'GOLD', 'LIQUID', 'HANGSENG', 'NIFTY', 'SENSEX', 'MOVALUE', 'MOMENTUM', 'MIDCAP', 'SMALLCAP', 'JUNIOR'];
 
         async function fetchAsset(input) {
-            // Safety Check inside fetching
             const lowerInput = input.toLowerCase();
             if(BLACKLIST_KEYS.some(k => lowerInput.includes(k))) return;
 
@@ -1208,13 +1227,20 @@
                 signal, name: data.name, price: data.price, type: data.type, 
                 pe: data.pe, growth: data.growth, profitGrowth: data.profitGrowth, opm: data.opm,
                 roe: data.roe, mcap: data.mcap, roce: data.roce, beta: data.beta, source: data.source,
-                returns: data.returns, technicals: data.technicals
+                returns: data.returns, technicals: data.technicals,
+                // PORTFOLIO-SUMMARY: Store calculated fields for summary rendering
+                action: decision.action,
+                explanation: fScore?.explanation,
+                levels: calculateMoreshwarLevels(data.price, fScore, pScore, isHeld)
             };
             if(!isCached) saveState(true); 
 
             const savedQty = portfolio[sym].qty || '';
             const savedAvg = portfolio[sym].avg || '';
             const opacityClass = isCached ? 'updating' : '';
+
+            // Add MC Link
+            const mcBtn = `<a href="https://www.google.com/search?q=${encodeURIComponent(data.name + " moneycontrol news")}" target="_blank" class="text-[9px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 rounded ml-1 hover:bg-emerald-100 transition-colors cursor-pointer" title="MoneyControl News" onclick="event.stopPropagation()">MC News</a>`;
 
             card.className = `bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden min-h-[340px] flex flex-col relative ${opacityClass}`;
             card.innerHTML = `
@@ -1230,6 +1256,7 @@
                                 ${trajectoryBadge}
                                 ${timingBadge}
                                 ${sourceTag}
+                                ${mcBtn}
                             </div>
                         </div>
                         <div class="flex flex-col items-end">
@@ -1416,74 +1443,77 @@
             if(tab === 'summary') renderSignalSummary();
         }
 
-        // PORTFOLIO-PANE: Placeholder logic only
+        // PORTFOLIO-SUMMARY: Rendering Logic
         function renderSignalSummary() { 
             const healthEl = document.getElementById('analytics-health');
             const allocEl = document.getElementById('analytics-allocation');
             const perfEl = document.getElementById('analytics-performance');
-            
+            const actionsEl = document.getElementById('analytics-actions'); // New Card
+
             if(!portfolioAnalytics.totalValue) {
                 healthEl.innerHTML = `<div class="text-center text-gray-400 text-xs">No Data</div>`;
                 return;
             }
 
-            // Health
-            let healthColor = 'text-yellow-600';
+            // Health & Risk Column
+            let healthColor = 'text-amber-600';
             let healthLabel = 'Neutral';
             if(portfolioAnalytics.healthScore > 65) { healthColor = 'text-green-600'; healthLabel = 'Strong'; }
             else if(portfolioAnalytics.healthScore < 40) { healthColor = 'text-red-600'; healthLabel = 'Weak'; }
             
-            // PORTFOLIO-RISK: Render Div Score and Alerts
             let riskHTML = '';
             if (portfolioAnalytics.risk.alerts && portfolioAnalytics.risk.alerts.length > 0) {
-                riskHTML = `<div class="mt-3 w-full px-2 space-y-1 overflow-y-auto max-h-[80px] custom-scroll border-t border-gray-100 pt-2">
-                    ${portfolioAnalytics.risk.alerts.map(a => `<div class="text-[9px] text-red-500 flex items-start"><span class="mr-1">⚠️</span>${a}</div>`).join('')}
+                riskHTML = `<div class="mt-3 w-full px-2 space-y-1 overflow-y-auto max-h-[80px] custom-scroll border-t border-amber-200/50 pt-2">
+                    ${portfolioAnalytics.risk.alerts.map(a => `<div class="text-[9px] text-amber-700 flex items-start"><span class="mr-1">⚠️</span>${a}</div>`).join('')}
                 </div>`;
             } else {
-                riskHTML = `<div class="mt-3 text-[10px] text-green-500 flex items-center"><span class="mr-1">✅</span>Well Diversified</div>`;
+                riskHTML = `<div class="mt-3 text-[10px] text-green-600 flex items-center"><span class="mr-1">✅</span>Well Diversified</div>`;
             }
 
+            const sensitivity = portfolioAnalytics.risk.sensitivity || 'Moderate';
+            const sensColor = sensitivity === 'Aggressive' ? 'text-red-500' : (sensitivity === 'Defensive' ? 'text-blue-500' : 'text-gray-500');
+
             healthEl.innerHTML = `
-                <div class="flex flex-col items-center pt-4 h-full">
+                <div class="flex flex-col items-center justify-center h-full pt-4 pb-4">
                     <div class="flex gap-4 mb-2">
                         <div class="text-center">
                             <div class="text-2xl font-bold ${healthColor}">${portfolioAnalytics.healthScore}</div>
-                            <span class="text-[9px] uppercase text-gray-400">Quality</span>
+                            <span class="text-[9px] uppercase text-amber-900/60">Quality</span>
                         </div>
                         <div class="text-center">
                             <div class="text-2xl font-bold text-blue-600">${portfolioAnalytics.risk.divScore || 100}</div>
-                            <span class="text-[9px] uppercase text-gray-400">Diversity</span>
+                            <span class="text-[9px] uppercase text-amber-900/60">Diversity</span>
                         </div>
                     </div>
+                    <div class="text-[10px] font-semibold border px-2 py-0.5 rounded ${sensColor} border-amber-200 bg-white mb-2">${sensitivity} Profile</div>
                     ${riskHTML}
                 </div>
             `;
 
             // Allocation
-            let allocHTML = '<div class="w-full space-y-2">';
+            let allocHTML = '<div class="w-full space-y-2 flex flex-col justify-center h-full px-2">';
             let total = portfolioAnalytics.totalValue;
             Object.entries(portfolioAnalytics.allocation).forEach(([key, val]) => {
                 let pct = Math.round((val/total)*100);
                 if(pct > 0) {
                     allocHTML += `
                         <div class="flex items-center text-xs">
-                            <span class="w-24 text-gray-600 font-medium">${key}</span>
-                            <div class="flex-1 h-2 bg-gray-100 rounded overflow-hidden mr-2">
-                                <div class="h-full bg-blue-500" style="width: ${pct}%"></div>
+                            <span class="w-24 text-indigo-900 font-medium">${key}</span>
+                            <div class="flex-1 h-2 bg-indigo-50 rounded overflow-hidden mr-2 border border-indigo-100">
+                                <div class="h-full bg-indigo-500" style="width: ${pct}%"></div>
                             </div>
-                            <span class="font-bold text-gray-700">${pct}%</span>
+                            <span class="font-bold text-indigo-700">${pct}%</span>
                         </div>
                     `;
                 }
             });
             
-            // PORTFOLIO-RISK: Add Sector Breakdown to Allocation Column
             if (portfolioAnalytics.risk.sectors && portfolioAnalytics.risk.sectors.length > 0) {
-                allocHTML += `<div class="mt-3 pt-2 border-t border-gray-100"><p class="text-[9px] text-gray-400 uppercase mb-1">Top Exposures</p>`;
+                allocHTML += `<div class="mt-4 pt-3 border-t border-indigo-200/50"><p class="text-[9px] text-indigo-400 uppercase mb-2 font-bold tracking-wider">Top Exposures</p>`;
                 portfolioAnalytics.risk.sectors.forEach(([ind, val]) => {
                     let sPct = Math.round((val/total)*100);
                     if (sPct > 5) {
-                        allocHTML += `<div class="flex justify-between text-[10px] text-gray-600 mb-0.5"><span>${ind}</span><span class="font-mono">${sPct}%</span></div>`;
+                        allocHTML += `<div class="flex justify-between text-[10px] text-indigo-800 mb-1"><span>${ind}</span><span class="font-mono text-indigo-600 font-bold">${sPct}%</span></div>`;
                     }
                 });
                 allocHTML += `</div>`;
@@ -1492,35 +1522,70 @@
             allocHTML += '</div>';
             allocEl.innerHTML = allocHTML;
 
-            // Performance & Efficiency
+            // Performance & Efficiency Column
             const totalPnL = parseFloat(document.getElementById('total-pnl').innerText.replace(/[^0-9.-]/g, ''));
             const pnlPct = total > 0 ? (totalPnL / (total - totalPnL)) * 100 : 0;
-            const pnlColor = totalPnL >= 0 ? 'text-green-600' : 'text-red-600';
+            const pnlColor = totalPnL >= 0 ? 'text-emerald-600' : 'text-rose-600';
             
-            // CAPITAL-EFFICIENCY: Render Alerts
             let effHTML = '';
             if (portfolioAnalytics.efficiency && portfolioAnalytics.efficiency.length > 0) {
-                effHTML = `<div class="mt-4 pt-2 border-t border-gray-100 w-full"><p class="text-[9px] text-gray-400 uppercase mb-1 text-center">Efficiency Check</p>`;
+                effHTML = `<div class="mt-auto w-full pt-3 border-t border-emerald-100/50"><p class="text-[9px] text-emerald-800/60 uppercase mb-1 text-center font-bold tracking-wider">Efficiency Check</p>`;
                 portfolioAnalytics.efficiency.forEach(item => {
-                    let color = 'text-gray-500';
-                    if (item.type === 'bad') color = 'text-red-500';
-                    if (item.type === 'good') color = 'text-green-600';
-                    effHTML += `<div class="text-[9px] ${color} text-center mb-0.5">${item.text}</div>`;
+                    let color = 'text-emerald-800';
+                    if (item.type === 'bad') color = 'text-rose-600';
+                    if (item.type === 'good') color = 'text-emerald-600';
+                    effHTML += `<div class="text-[9px] ${color} text-center mb-0.5 bg-white/50 rounded py-0.5 px-1 truncate" title="${item.text}">${item.text}</div>`;
                 });
                 effHTML += `</div>`;
             } else if (total > 0) {
-                effHTML = `<div class="mt-4 pt-2 border-t border-gray-100 w-full text-center"><span class="text-[9px] text-green-500">Capital Allocation Efficient</span></div>`;
+                effHTML = `<div class="mt-auto w-full pt-3 border-t border-emerald-100/50 text-center"><span class="text-[9px] text-emerald-600 font-medium">Capital Allocation Efficient</span></div>`;
             }
 
             perfEl.innerHTML = `
-                <div class="flex flex-col items-center justify-center h-full">
-                    <div class="text-2xl font-bold ${pnlColor} mb-1">${totalPnL >= 0 ? '+' : ''}${pnlPct.toFixed(1)}%</div>
-                    <span class="text-xs text-gray-400 mb-2">Total Return</span>
-                    <div class="text-sm font-mono font-bold text-gray-700">₹${totalPnL.toLocaleString()}</div>
-                    <span class="text-[10px] text-gray-400 mb-1">Absolute P&L</span>
+                <div class="flex flex-col items-center h-full w-full py-4">
+                    <div class="flex-1 flex flex-col items-center justify-center">
+                        <div class="text-3xl font-bold ${pnlColor} mb-1">${totalPnL >= 0 ? '+' : ''}${pnlPct.toFixed(1)}%</div>
+                        <span class="text-xs text-emerald-900/60 mb-3 uppercase tracking-wide font-medium">Total Return</span>
+                        <div class="text-sm font-mono font-bold text-emerald-800 bg-emerald-50 px-3 py-1.5 rounded border border-emerald-100 shadow-sm">₹${totalPnL.toLocaleString()}</div>
+                    </div>
                     ${effHTML}
                 </div>
             `;
+
+            // PORTFOLIO-SUMMARY: Actions Card Logic
+            let actionsList = [];
+            Object.values(stockAnalysis).forEach(data => {
+               if (data.action === 'BUY NOW') {
+                   // Truncate explanation to ~3 words
+                   let reason = (data.explanation || "").split(' ').slice(0,3).join(' ');
+                   let entry = data.levels?.entry || data.price;
+                   actionsList.push({ type: 'buy', text: `Buy ${data.name}`, sub: `@ ₹${entry.toLocaleString()}`, reason: reason });
+               } else if (data.action === 'EXIT') {
+                   let reason = (data.explanation || "").split(' ').slice(0,3).join(' ');
+                   actionsList.push({ type: 'sell', text: `Sell ${data.name}`, sub: `@ ₹${data.price.toLocaleString()}`, reason: reason });
+               }
+            });
+
+            if (actionsList.length === 0) {
+                actionsEl.innerHTML = `<div class="h-full flex flex-col items-center justify-center text-violet-300 text-xs italic"><p>No Immediate Actions</p></div>`;
+            } else {
+                let listHTML = `<div class="w-full space-y-2 overflow-y-auto custom-scroll pr-1">`;
+                actionsList.forEach(act => {
+                    const icon = act.type === 'buy' ? '🟢' : '🔴';
+                    const colorClass = act.type === 'buy' ? 'text-green-700 bg-green-50 border-green-100' : 'text-red-700 bg-red-50 border-red-100';
+                    listHTML += `
+                        <div class="p-2 rounded border ${colorClass} text-xs">
+                            <div class="flex justify-between font-bold mb-0.5">
+                                <span>${icon} ${act.text}</span>
+                                <span class="font-mono">${act.sub}</span>
+                            </div>
+                            <div class="text-[9px] opacity-80 pl-5 italic">${act.reason}</div>
+                        </div>
+                    `;
+                });
+                listHTML += `</div>`;
+                actionsEl.innerHTML = listHTML;
+            }
         }
         
         function updateViewCounts() {
@@ -1778,141 +1843,12 @@
             return "Low";
         }
         
-        // --- PORTFOLIO AGGREGATION & RISK LAYER --- 
-        function calculatePortfolioAggregates() { // PORTFOLIO-AGGREGATE
-            let totalVal = 0;
-            let weightedScoreSum = 0;
-            let scoredVal = 0;
-            let distribution = { 'Equity': 0, 'Cash': 0, 'Mutual Funds': 0, 'ETF': 0 };
-            
-            // PORTFOLIO-RISK: Tracking objects
-            let industryExposure = {};
-            let assetExposure = {};
-            let topAssets = [];
-            
-            // Reset state
-            portfolioAnalytics = { healthScore: 0, scoredValue: 0, totalValue: 0, allocation: {}, risk: { alerts: [], sectors: {}, divScore: 100 }, efficiency: [] }; // CAPITAL-EFFICIENCY: Added efficiency array
-
-            Object.keys(portfolio).forEach(sym => {
-                const qty = portfolio[sym].qty || 0;
-                if (qty <= 0) return;
-
-                const price = livePrices[sym] || 0;
-                const val = qty * price;
-                totalVal += val;
-                
-                // Track single asset exposure
-                assetExposure[sym] = val;
-                
-                // CAPITAL-EFFICIENCY: Init score
-                let currentScore = 0;
-
-                // Grab analysis data if available
-                const data = stockAnalysis[sym];
-                if (data) {
-                    let type = 'Equity';
-                    if (data.type === 'ETF') type = 'ETF';
-                    else if (data.type === 'FUND') type = 'Mutual Funds';
-                    distribution[type] = (distribution[type] || 0) + val;
-                    
-                    // PORTFOLIO-RISK: Track Industry Exposure
-                    // Treat Funds/ETFs as 'Diversified' unless we want to map them
-                    let ind = 'DIVERSIFIED';
-                    if (type === 'Equity') {
-                        ind = detectIndustry(data);
-                    } else {
-                        // Optional: Map Sector ETFs if keywords match
-                        if(data.name.includes("BANK")) ind = 'BANKING';
-                        else if(data.name.includes("IT")) ind = 'IT';
-                    }
-                    industryExposure[ind] = (industryExposure[ind] || 0) + val;
-
-                    // Re-calculate normalized score specifically for aggregation
-                    // to ensure we have the exact latest number
-                    let fScore = calculateFundamentalScore(data);
-                    if (fScore) {
-                        fScore = normalizeFundamentalScore(fScore, data);
-                        if (fScore.total > 0) {
-                            currentScore = fScore.total; // CAPITAL-EFFICIENCY: Capture score
-                            weightedScoreSum += fScore.total * val;
-                            scoredVal += val;
-                        }
-                    }
-                } else {
-                    // Unscored asset (manual entry without fetch)
-                    distribution['Equity'] = (distribution['Equity'] || 0) + val; // Assume equity
-                    industryExposure['GENERAL'] = (industryExposure['GENERAL'] || 0) + val;
-                }
-                
-                // CAPITAL-EFFICIENCY: Store in topAssets for 2nd pass
-                topAssets.push({ sym, val, score: currentScore });
-            });
-            
-            // Final Computations
-            portfolioAnalytics.totalValue = totalVal;
-            portfolioAnalytics.scoredValue = scoredVal;
-            portfolioAnalytics.allocation = distribution;
-            if (scoredVal > 0) {
-                portfolioAnalytics.healthScore = Math.round(weightedScoreSum / scoredVal);
-            }
-
-            // PORTFOLIO-RISK & CAPITAL-EFFICIENCY: Analysis Logic
-            if (totalVal > 0) {
-                // 1. Sector/Industry Breaches
-                const MAX_SECTOR = 0.35; // 35%
-                const MAX_ASSET = 0.20; // 20%
-                let divPenalty = 0;
-
-                // Sort industries by value
-                const sortedInds = Object.entries(industryExposure).sort((a,b) => b[1] - a[1]);
-                portfolioAnalytics.risk.sectors = sortedInds.slice(0, 3); // Top 3 for UI
-
-                sortedInds.forEach(([ind, val]) => {
-                    const pct = val / totalVal;
-                    if (pct > MAX_SECTOR && ind !== 'DIVERSIFIED' && ind !== 'GENERAL') {
-                        portfolioAnalytics.risk.alerts.push(`High Exposure to ${ind} (${Math.round(pct*100)}%)`);
-                        divPenalty += (pct - MAX_SECTOR) * 100;
-                    }
-                });
-
-                // 2. Asset Breaches & Efficiency Checks
-                topAssets.sort((a,b) => b.val - a.val);
-                topAssets.forEach(item => {
-                    const pct = item.val / totalVal;
-                    const pct100 = pct * 100;
-                    
-                    // Risk: Single Asset Concentration
-                    if (pct > MAX_ASSET) {
-                        portfolioAnalytics.risk.alerts.push(`Dominant Asset: ${cleanTicker(item.sym)} (${Math.round(pct100)}%)`);
-                        divPenalty += (pct - MAX_ASSET) * 100;
-                    }
-                    
-                    // CAPITAL-EFFICIENCY: Deterministic Rules
-                    if (item.score > 0) { // Only scoreable assets
-                        if (item.score < 50 && pct100 > 10) {
-                            portfolioAnalytics.efficiency.push({ type: 'bad', text: `High Alloc in Weak Asset: ${cleanTicker(item.sym)}` });
-                        } else if (item.score > 70 && pct100 < 3) {
-                            portfolioAnalytics.efficiency.push({ type: 'good', text: `Under-allocated Winner: ${cleanTicker(item.sym)}` });
-                        } else if (item.score < 55 && pct100 < 2) {
-                            portfolioAnalytics.efficiency.push({ type: 'tail', text: `Low Conviction Tail: ${cleanTicker(item.sym)}` });
-                        }
-                    }
-                });
-
-                // 3. Concentration Score (Dominance)
-                if (topAssets.length > 0) {
-                    const top3Val = topAssets.slice(0, 3).reduce((acc, curr) => acc + curr.val, 0);
-                    const top3Pct = top3Val / totalVal;
-                    if (top3Pct > 0.60) {
-                        portfolioAnalytics.risk.alerts.push(`Top 3 Assets constitute ${Math.round(top3Pct*100)}% of Portfolio`);
-                        divPenalty += 10;
-                    }
-                }
-
-                // 4. Calculate Diversification Score (100 - penalties)
-                portfolioAnalytics.risk.divScore = Math.max(0, Math.round(100 - divPenalty));
-            }
+        function getDisplayName(sym) {
+            return stockAnalysis[sym]?.name || cleanTicker(sym);
         }
+
+        // Ensure initApp is available globally
+        document.addEventListener('DOMContentLoaded', initApp);
     </script>
 </body>
 </html>
