@@ -365,7 +365,7 @@
             <div class="flex items-start gap-2">
                 <div class="w-6 h-6 rounded-full bg-violet-100 text-violet-600 flex items-center justify-center text-xs border border-violet-200">S</div>
                 <div class="bg-white p-3 rounded-tr-xl rounded-bl-xl rounded-br-xl shadow-sm border border-gray-100 text-xs text-gray-600 max-w-[85%]">
-                    Hi! I'm Stocky. I analyze your portfolio structure and risk.<br><br>Try asking: "How is my diversification?" or "Any capital traps?"
+                    Hi! I'm Stocky. I analyze your portfolio structure and risk.<br><br>Try asking: "How is my diversification?", "Explain INFY", or "Allocate 1 Lakh".
                 </div>
             </div>
         </div>
@@ -382,7 +382,7 @@
     </div>
 
     <script>
-        // ... (All existing logic remains exactly the same as previous step, just re-included for single file context) ...
+        // ... (Previous configuration and state variables remain unchanged)
         // --- GOOGLE SHEET CONFIG ---
         const SHEET_API_URL = "https://script.google.com/macros/s/AKfycbyScFGyxqSwudrvbCngaPtlKxtHlS4O8Q7bj4FcQEESir3LFSlnHquPxskKsBKC9kS1VQ/exec";
 
@@ -2076,7 +2076,7 @@
 
             div.innerHTML = `
                 ${avatar}
-                <div class="${bubbleClass} p-3 text-xs max-w-[85%]">
+                <div class="${bubbleClass} p-3 text-xs max-w-[85%] whitespace-pre-wrap">
                     ${text}
                 </div>
             `;
@@ -2084,72 +2084,179 @@
             container.scrollTop = container.scrollHeight;
         }
 
-        function generateStockyResponse(query) {
+        // STOCKY-MAP: Intent Mapping
+        function mapQueryToIntent(query) {
             const q = query.toLowerCase();
+            const assets = Object.keys(stockAnalysis).filter(sym => q.includes(sym.toLowerCase()) || q.includes(stockAnalysis[sym].name.toLowerCase()));
             
-            // 1. Portfolio Health Intent
-            if (q.includes('health') || q.includes('score') || q.includes('doing')) {
-                const health = portfolioAnalytics.healthScore || 0;
-                let tone = "stable";
-                if (health > 65) tone = "strong";
-                if (health < 40) tone = "struggling";
-                
-                return `According to the model, your portfolio's structural health is currently ${tone} with a composite score of ${health}. This score is a weighted average of the fundamental quality of your individual holdings, not a market prediction.`;
+            // 1. Compare Assets (Strict Rule: Must have >= 2 assets)
+            if ((q.includes('compare') || q.includes('better') || q.includes(' vs ')) && assets.length >= 2) {
+                return { type: 'COMPARE', assets: assets.slice(0, 2) };
             }
-            
-            // 2. Diversification/Risk Intent
-            if (q.includes('diversif') || q.includes('risk') || q.includes('concentrat')) {
-                const divScore = portfolioAnalytics.risk.divScore || 0;
-                const sectors = (portfolioAnalytics.risk.sectors || []).map(s => s[0]).join(', ');
-                const alerts = portfolioAnalytics.risk.alerts || [];
-                
-                let reply = `Your diversification score sits at ${divScore}/100. `;
-                if (sectors) reply += `Structural data shows major exposure to ${sectors}. `;
-                if (alerts.length > 0) reply += `The system flags some concentration risks: ${alerts[0]}.`;
-                else reply += `The allocation looks balanced across sectors based on our standard risk thresholds.`;
-                return reply;
+
+            // 2. Explain Asset Score (Strict Rule: Must have >= 1 asset)
+            if (assets.length > 0 && (q.includes('explain') || q.includes('score') || q.includes('analysis') || q.includes('buy') || q.includes('sell') || q.includes('why') || assets.length === 1)) {
+                return { type: 'EXPLAIN', asset: assets[0] };
             }
+
+            // 3. Portfolio Summary (Health/Score)
+            if (q.includes('health') || q.includes('summary') || q.includes('overview') || q.includes('score')) {
+                return { type: 'SUMMARY' };
+            }
+
+            // 4. Risk Analysis
+            if (q.includes('risk') || q.includes('concentrat') || q.includes('diversif') || q.includes('exposure')) {
+                return { type: 'RISK' };
+            }
+
+            // 5. Capital Allocation Simulation
+            // Regex to detect "10k", "5L", "10000"
+            const amtMatch = q.match(/(?:rs\.?|₹|inr)\s*(\d+(?:,\d+)*(?:\.\d+)?)\s*(k|l|cr|m|b)?/i) || q.match(/(\d+(?:,\d+)*(?:\.\d+)?)\s*(k|l|cr|m|b)/i) || q.match(/(?:allocate|have|invest)\s*(\d+(?:,\d+)*(?:\.\d+)?)/i);
             
-            // 3. Efficiency/Traps Intent
-            if (q.includes('efficien') || q.includes('trap') || q.includes('bad') || q.includes('mistake')) {
-                const eff = portfolioAnalytics.efficiency || [];
-                const traps = eff.filter(e => e.type === 'bad');
+            if (amtMatch) {
+                let val = parseFloat(amtMatch[1].replace(/,/g, ''));
+                const unit = (amtMatch[2] || '').toLowerCase();
+                if (unit === 'k') val *= 1000;
+                else if (unit === 'l') val *= 100000;
+                else if (unit === 'cr') val *= 10000000;
+                else if (unit === 'm') val *= 1000000;
                 
-                if (traps.length > 0) {
-                    return `I found some potential capital inefficiencies. Specifically, ${traps[0].text}. This suggests a large allocation in a structurally weak asset according to our scoring model.`;
+                // Extract requested assets for simulation if any
+                const reqAssets = assets.length > 0 ? assets : []; 
+                return { type: 'ALLOCATION_SIM', amount: val, assets: reqAssets };
+            }
+
+            // 6. Efficiency Check
+            if (q.includes('allocation') || q.includes('efficien') || q.includes('trap') || q.includes('size')) {
+                return { type: 'EFFICIENCY' };
+            }
+
+            return { type: 'UNSUPPORTED' };
+        }
+
+        // STOCKY-ALLOCATION: Helper Function
+        function simulateCapitalAllocation(amount, specificAssets) {
+            let candidates = [];
+            
+            // 1. Filter Candidates
+            if (specificAssets.length > 0) {
+                 candidates = specificAssets.map(sym => ({ sym, ...stockAnalysis[sym] })).filter(c => c.price > 0);
+            } else {
+                 // Auto-pick top BUY candidates
+                 candidates = Object.entries(stockAnalysis)
+                    .map(([sym, data]) => ({ sym, ...data }))
+                    .filter(d => d.price > 0 && d.action === 'BUY NOW'); // Strict existing rule
+                 
+                 // Fallback if no explicit BUYs
+                 if (candidates.length === 0) {
+                     candidates = Object.entries(stockAnalysis)
+                        .map(([sym, data]) => ({ sym, ...data }))
+                        .filter(d => d.price > 0 && calculateFundamentalScore(d)?.total > 60);
+                 }
+            }
+
+            if (candidates.length === 0) {
+                return "I couldn't find any high-conviction assets (Score > 60 or BUY signal) to simulate an allocation for right now.";
+            }
+
+            // 2. Weighting (Score-based)
+            let totalScore = 0;
+            candidates = candidates.map(c => {
+                let fScore = calculateFundamentalScore(c);
+                if(fScore) fScore = normalizeFundamentalScore(fScore, c);
+                const score = fScore ? fScore.total : 50;
+                totalScore += score;
+                return { ...c, score };
+            });
+
+            // 3. Allocate
+            let result = [];
+            let used = 0;
+            candidates.forEach(c => {
+                const weight = c.score / totalScore;
+                const allocAmt = amount * weight;
+                const qty = Math.floor(allocAmt / c.price);
+                const cost = qty * c.price;
+                if(qty > 0) {
+                    result.push({ name: c.name, price: c.price, qty: qty, value: cost, weight: (weight*100).toFixed(1) });
+                    used += cost;
                 }
-                return `Capital deployment looks efficient based on current metrics. I haven't flagged any major "Capital Traps" where high allocation meets low quality.`;
-            }
+            });
 
-            // 4. Action/Buy/Sell Intent
-            if (q.includes('buy') || q.includes('sell') || q.includes('action')) {
-                let buys = [];
-                let sells = [];
-                Object.values(stockAnalysis).forEach(s => {
-                    if (s.action === 'BUY NOW') buys.push(s.name);
-                    if (s.action === 'EXIT') sells.push(s.name);
-                });
-                
-                if (buys.length === 0 && sells.length === 0) {
-                    return `I don't see any immediate high-conviction actions triggering right now. The market might be in a 'Wait and Watch' zone for your watchlist items based on our entry rules.`;
-                }
-                
-                let msg = "";
-                if (buys.length) msg += `The system signals a BUY for ${buys.slice(0,2).join(', ')} based on strong fundamentals and timing alignment. `;
-                if (sells.length) msg += `There is an EXIT signal for ${sells.slice(0,2).join(', ')} due to deteriorating metrics or valuation breaches.`;
-                return msg;
-            }
+            if (result.length === 0) return "The capital amount is too small to buy even a single share of the selected assets.";
 
-            // 5. Specific Stock Query
-            // Naive check against portfolio keys or names
-            const symbol = Object.keys(stockAnalysis).find(s => q.includes(s.toLowerCase()) || q.includes(stockAnalysis[s].name.toLowerCase().toLowerCase()));
-            if (symbol) {
-                const data = stockAnalysis[symbol];
-                return `Looking at ${data.name}, the system derives a ${data.action} signal. This is driven by ${data.explanation || 'structural factors'}, resulting in a conviction score that suggests ${data.action === 'BUY NOW' ? 'structural strength' : 'caution'}. ${data.levels ? `Key levels based on conviction: Entry/SL at ₹${(data.levels.sl || data.levels.entry || 0).toLocaleString()}.` : ''}`;
-            }
+            // 4. Format Output
+            let response = `For a capital of ₹${amount.toLocaleString()}, here is a simulation based on relative strength scores:\n\n`;
+            
+            // Table
+            response += `<table class="w-full text-xs border-collapse mb-2">
+                <thead><tr class="border-b border-gray-200 text-left"><th class="py-1">Asset</th><th>Qty</th><th>Value</th></tr></thead>
+                <tbody>`;
+            result.forEach(r => {
+                response += `<tr class="border-b border-gray-50"><td class="py-1">${r.name}</td><td>${r.qty}</td><td>₹${r.value.toLocaleString()}</td></tr>`;
+            });
+            response += `</tbody></table>`;
+            
+            response += `\nUnused Cash: ₹${(amount - used).toLocaleString()}`;
+            response += `\n\n<i class="text-[10px] text-gray-400">Note: Higher scores receive higher allocation weights. Not a recommendation.</i>`;
+            
+            return response;
+        }
 
-            // Default Fallback (Guardrail)
-            return `I'm tuned to analyze portfolio structure, risk, and scoring rules. I can't predict market movements or offer general financial advice, but I can walk you through the data on your screen. Try asking about "Portfolio Health" or "Capital Efficiency".`;
+        function generateStockyResponse(query) {
+            const intent = mapQueryToIntent(query);
+
+            switch (intent.type) {
+                case 'SUMMARY':
+                    const health = portfolioAnalytics.healthScore || 0;
+                    let tone = "stable";
+                    if (health > 65) tone = "strong";
+                    if (health < 40) tone = "struggling";
+                    return `According to the model, your portfolio's structural health is currently ${tone} with a composite score of ${health}. This score is a weighted average of the fundamental quality of your individual holdings.`;
+
+                case 'RISK':
+                    const divScore = portfolioAnalytics.risk.divScore || 0;
+                    const sectors = (portfolioAnalytics.risk.sectors || []).map(s => s[0]).join(', ');
+                    const alerts = portfolioAnalytics.risk.alerts || [];
+                    let reply = `Your diversification score sits at ${divScore}/100. `;
+                    if (sectors) reply += `Structural data shows major exposure to ${sectors}. `;
+                    if (alerts.length > 0) reply += `The system flags some concentration risks: ${alerts[0]}.`;
+                    else reply += `The allocation looks balanced across sectors based on our standard risk thresholds.`;
+                    return reply;
+
+                case 'EFFICIENCY':
+                    const eff = portfolioAnalytics.efficiency || [];
+                    const traps = eff.filter(e => e.type === 'bad');
+                    if (traps.length > 0) {
+                        return `I found some potential capital inefficiencies. Specifically, ${traps[0].text}. This suggests a large allocation in a structurally weak asset according to our scoring model.`;
+                    }
+                    return `Capital deployment looks efficient based on current metrics. I haven't flagged any major "Capital Traps" where high allocation meets low quality.`;
+                    
+                case 'ALLOCATION_SIM':
+                    return simulateCapitalAllocation(intent.amount, intent.assets);
+
+                case 'EXPLAIN':
+                    const symbol = intent.asset;
+                    const data = stockAnalysis[symbol];
+                    if (!data) return "I can't access data for that symbol right now.";
+                    return `Looking at ${data.name}, the system derives a ${data.action} signal. This is driven by ${data.explanation || 'structural factors'}, resulting in a conviction score that suggests ${data.action === 'BUY NOW' ? 'structural strength' : 'caution'}. ${data.levels ? `Key levels based on conviction: Entry/SL at ₹${(data.levels.sl || data.levels.entry || 0).toLocaleString()}.` : ''}`;
+
+                case 'COMPARE':
+                    const [symA, symB] = intent.assets;
+                    const d1 = stockAnalysis[symA];
+                    const d2 = stockAnalysis[symB];
+                    if (!d1 || !d2) return "I need valid data for both assets to compare them.";
+                    
+                    return `Comparing ${d1.name} (${d1.action}) vs ${d2.name} (${d2.action}):\n` +
+                           `• ${d1.name}: ${d1.explanation || 'N/A'}\n` +
+                           `• ${d2.name}: ${d2.explanation || 'N/A'}\n` +
+                           `The system currently favors ${d1.action === 'BUY NOW' && d2.action !== 'BUY NOW' ? d1.name : (d2.action === 'BUY NOW' && d1.action !== 'BUY NOW' ? d2.name : "neither definitively based on signal strength")}.`;
+
+
+                case 'UNSUPPORTED':
+                default:
+                    return `I'm tuned to analyze portfolio structure, risk, and scoring rules. I can't predict market movements or offer general financial advice. Try asking about "Portfolio Health", "Capital Efficiency", or "Explain [Stock]".`;
+            }
         }
     </script>
 </body>
